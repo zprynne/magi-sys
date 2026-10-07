@@ -1,10 +1,11 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { CouncilGraph } from '../components/graph/CouncilGraph'
 import { PhaseTrack } from '../components/PhaseTrack'
 import { ProposalForm, type Proposal } from '../components/ProposalForm'
 import { ActionButton, RunHeader } from '../components/RunHeader'
 import { Transcript } from '../components/transcript/Transcript'
+import { VerdictScreen } from '../components/verdict/VerdictScreen'
 import { api, ApiError } from '../lib/api'
 import { useServerConfig } from '../lib/config'
 import { elapsed } from '../lib/format'
@@ -40,6 +41,12 @@ export function ConsolePage() {
   const view = useMemo(() => deriveView(stream.events, config?.agents ?? []), [stream.events, config])
   const [starting, setStarting] = useState(false)
   const [startError, setStartError] = useState<string | null>(null)
+
+  const [dismissedVerdict, setDismissedVerdict] = useState<string | null>(null)
+  const verdictOpen = view.verdict !== null && dismissedVerdict !== view.runId
+  const closeVerdict = useCallback(() => {
+    setDismissedVerdict(view.runId)
+  }, [view.runId])
 
   const running = isRunning(view)
   const now = useNow(running)
@@ -89,6 +96,15 @@ export function ConsolePage() {
             actions={
               view.completed && (
                 <>
+                  {view.verdict && !verdictOpen && (
+                    <ActionButton
+                      onClick={() => {
+                        setDismissedVerdict(null)
+                      }}
+                    >
+                      Show verdict
+                    </ActionButton>
+                  )}
                   {!view.config?.mock && (
                     <ActionButton onClick={() => void navigate(`/replay/${runId}`)}>Open in replays</ActionButton>
                   )}
@@ -120,6 +136,16 @@ export function ConsolePage() {
           <PhaseTrack view={view} />
         </div>
       </div>
+
+      {verdictOpen && view.verdict && (
+        <VerdictScreen
+          question={view.question ?? ''}
+          verdict={view.verdict}
+          votes={view.votes}
+          agents={view.agents}
+          onClose={closeVerdict}
+        />
+      )}
 
       <aside className="flex min-h-0 flex-col border-t border-line lg:border-t-0 lg:border-l">
         {runId ? (
