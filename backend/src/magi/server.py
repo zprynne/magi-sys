@@ -23,10 +23,12 @@ from fastapi import APIRouter, FastAPI, Header, HTTPException, Query, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
+from starlette.concurrency import run_in_threadpool
 
 from magi import __version__
 from magi.events import AgentInfo, EventBase, MagiEvent, VerdictRule, dump_event
 from magi.llm import build_chat_model
+from magi.mock import MockEngine
 from magi.paths import REPO_ROOT
 from magi.personas import load_personas
 from magi.runs import Engine, LiveEngine, ModelFactory, RunManager, StartRunRequest
@@ -74,7 +76,13 @@ def create_app(
     settings = settings or get_settings()
     council = load_personas(settings.personas_dir)
     store = TraceStore(settings.traces_dir)
-    engine = engine or LiveEngine(settings, council, model_factory)
+    if engine is None:
+        engine = (
+            MockEngine(store, speed=settings.mock_speed)
+            if settings.mock
+            else LiveEngine(settings, council, model_factory)
+        )
+    # Mock replays are copies of existing traces, so they are not persisted again.
     manager = RunManager(engine, store, persist=not settings.mock)
 
     @asynccontextmanager
@@ -118,6 +126,13 @@ def create_app(
 
     @api.post("/runs", status_code=status.HTTP_201_CREATED)
     async def start_run(request: StartRunRequest) -> StartRunResponse:
+        if isinstance(engine, MockEngine):
+            try:
+                await run_in_threadpool(engine.resolve, request)
+            except TraceNotFoundError as exc:
+                raise HTTPException(
+                    status.HTTP_404_NOT_FOUND, f"no trace to replay: {exc}"
+                ) from None
         channel = manager.start(request)
         return StartRunResponse(run_id=channel.run_id)
 
