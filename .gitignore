@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+
+# Node
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Env / OS
+.env
+.DS_Store
+
+# Run traces: keep the bundled examples, ignore everything recorded locally
+traces/*.jsonl
+!traces/example-*.jsonl

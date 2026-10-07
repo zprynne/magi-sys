@@ -1,0 +1,716 @@
+{
+  "$defs": {
+    "AgentInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "color": {
+          "description": "CSS color used for this agent in the UI.",
+          "type": "string"
+        },
+        "id": {
+          "description": "Stable lowercase id, e.g. 'melchior'.",
+          "type": "string"
+        },
+        "name": {
+          "description": "Display name, e.g. 'MELCHIOR-1'.",
+          "type": "string"
+        },
+        "priorities": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "title": {
+          "description": "Persona title, e.g. 'The Scientist'.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "title",
+        "color",
+        "priorities"
+      ],
+      "title": "AgentInfo",
+      "type": "object"
+    },
+    "AgentMessage": {
+      "additionalProperties": false,
+      "properties": {
+        "agent_id": {
+          "type": "string"
+        },
+        "content": {
+          "type": "string"
+        },
+        "message_id": {
+          "type": "string"
+        },
+        "phase": {
+          "$ref": "#/$defs/Phase"
+        },
+        "reply_to": {
+          "items": {
+            "$ref": "#/$defs/ReplyRef"
+          },
+          "type": "array"
+        },
+        "round": {
+          "type": "integer"
+        },
+        "run_id": {
+          "type": "string"
+        },
+        "seq": {
+          "description": "1-based, strictly increasing within a run.",
+          "minimum": 1,
+          "type": "integer"
+        },
+        "stance": {
+          "$ref": "#/$defs/Stance"
+        },
+        "summary": {
+          "description": "One-sentence statement of the agent's current position.",
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "type": {
+          "const": "agent_message",
+          "default": "agent_message",
+          "type": "string"
+        }
+      },
+      "required": [
+        "run_id",
+        "seq",
+        "timestamp",
+        "type",
+        "agent_id",
+        "message_id",
+        "phase",
+        "round",
+        "content",
+        "stance",
+        "summary",
+        "reply_to"
+      ],
+      "title": "AgentMessage",
+      "type": "object"
+    },
+    "AgentRevisedPosition": {
+      "additionalProperties": false,
+      "properties": {
+        "agent_id": {
+          "type": "string"
+        },
+        "message_id": {
+          "type": "string"
+        },
+        "new_stance": {
+          "$ref": "#/$defs/Stance"
+        },
+        "new_summary": {
+          "type": "string"
+        },
+        "previous_stance": {
+          "$ref": "#/$defs/Stance"
+        },
+        "previous_summary": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "round": {
+          "type": "integer"
+        },
+        "run_id": {
+          "type": "string"
+        },
+        "seq": {
+          "description": "1-based, strictly increasing within a run.",
+          "minimum": 1,
+          "type": "integer"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "type": {
+          "const": "agent_revised_position",
+          "default": "agent_revised_position",
+          "type": "string"
+        }
+      },
+      "required": [
+        "run_id",
+        "seq",
+        "timestamp",
+        "type",
+        "agent_id",
+        "message_id",
+        "round",
+        "previous_stance",
+        "new_stance",
+        "previous_summary",
+        "new_summary",
+        "reason"
+      ],
+      "title": "AgentRevisedPosition",
+      "type": "object"
+    },
+    "AgentThinking": {
+      "additionalProperties": false,
+      "properties": {
+        "agent_id": {
+          "type": "string"
+        },
+        "phase": {
+          "$ref": "#/$defs/Phase"
+        },
+        "round": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "run_id": {
+          "type": "string"
+        },
+        "seq": {
+          "description": "1-based, strictly increasing within a run.",
+          "minimum": 1,
+          "type": "integer"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "type": {
+          "const": "agent_thinking",
+          "default": "agent_thinking",
+          "type": "string"
+        }
+      },
+      "required": [
+        "run_id",
+        "seq",
+        "timestamp",
+        "type",
+        "agent_id",
+        "phase",
+        "round"
+      ],
+      "title": "AgentThinking",
+      "type": "object"
+    },
+    "DecisiveArgument": {
+      "additionalProperties": false,
+      "properties": {
+        "agent_id": {
+          "type": "string"
+        },
+        "message_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "reason": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "agent_id",
+        "message_id",
+        "reason"
+      ],
+      "title": "DecisiveArgument",
+      "type": "object"
+    },
+    "Outcome": {
+      "enum": [
+        "APPROVED",
+        "DENIED",
+        "DEADLOCK"
+      ],
+      "title": "Outcome",
+      "type": "string"
+    },
+    "Phase": {
+      "enum": [
+        "opening",
+        "debate",
+        "vote",
+        "verdict"
+      ],
+      "title": "Phase",
+      "type": "string"
+    },
+    "PhaseStarted": {
+      "additionalProperties": false,
+      "properties": {
+        "phase": {
+          "$ref": "#/$defs/Phase"
+        },
+        "round": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "0 for opening, 1..N for debate rounds, null otherwise."
+        },
+        "run_id": {
+          "type": "string"
+        },
+        "seq": {
+          "description": "1-based, strictly increasing within a run.",
+          "minimum": 1,
+          "type": "integer"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "type": {
+          "const": "phase_started",
+          "default": "phase_started",
+          "type": "string"
+        }
+      },
+      "required": [
+        "run_id",
+        "seq",
+        "timestamp",
+        "type",
+        "phase",
+        "round"
+      ],
+      "title": "PhaseStarted",
+      "type": "object"
+    },
+    "ReplyRef": {
+      "additionalProperties": false,
+      "properties": {
+        "agent_id": {
+          "type": "string"
+        },
+        "message_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "agent_id",
+        "message_id"
+      ],
+      "title": "ReplyRef",
+      "type": "object"
+    },
+    "RunCompleted": {
+      "additionalProperties": false,
+      "properties": {
+        "duration_ms": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "run_id": {
+          "type": "string"
+        },
+        "seq": {
+          "description": "1-based, strictly increasing within a run.",
+          "minimum": 1,
+          "type": "integer"
+        },
+        "status": {
+          "$ref": "#/$defs/RunStatus"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "type": {
+          "const": "run_completed",
+          "default": "run_completed",
+          "type": "string"
+        }
+      },
+      "required": [
+        "run_id",
+        "seq",
+        "timestamp",
+        "type",
+        "status",
+        "duration_ms"
+      ],
+      "title": "RunCompleted",
+      "type": "object"
+    },
+    "RunConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "early_consensus": {
+          "default": true,
+          "type": "boolean"
+        },
+        "max_rounds": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "mock": {
+          "default": false,
+          "type": "boolean"
+        },
+        "model": {
+          "type": "string"
+        },
+        "verdict_rule": {
+          "$ref": "#/$defs/VerdictRule"
+        }
+      },
+      "required": [
+        "max_rounds",
+        "verdict_rule",
+        "model",
+        "mock",
+        "early_consensus"
+      ],
+      "title": "RunConfig",
+      "type": "object"
+    },
+    "RunError": {
+      "additionalProperties": false,
+      "properties": {
+        "agent_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "fatal": {
+          "default": false,
+          "type": "boolean"
+        },
+        "message": {
+          "type": "string"
+        },
+        "run_id": {
+          "type": "string"
+        },
+        "seq": {
+          "description": "1-based, strictly increasing within a run.",
+          "minimum": 1,
+          "type": "integer"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "type": {
+          "const": "run_error",
+          "default": "run_error",
+          "type": "string"
+        }
+      },
+      "required": [
+        "run_id",
+        "seq",
+        "timestamp",
+        "type",
+        "message",
+        "agent_id",
+        "fatal"
+      ],
+      "title": "RunError",
+      "type": "object"
+    },
+    "RunStarted": {
+      "additionalProperties": false,
+      "properties": {
+        "agents": {
+          "items": {
+            "$ref": "#/$defs/AgentInfo"
+          },
+          "type": "array"
+        },
+        "config": {
+          "$ref": "#/$defs/RunConfig"
+        },
+        "question": {
+          "type": "string"
+        },
+        "run_id": {
+          "type": "string"
+        },
+        "schema_version": {
+          "default": "1.0",
+          "type": "string"
+        },
+        "seq": {
+          "description": "1-based, strictly increasing within a run.",
+          "minimum": 1,
+          "type": "integer"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "type": {
+          "const": "run_started",
+          "default": "run_started",
+          "type": "string"
+        }
+      },
+      "required": [
+        "run_id",
+        "seq",
+        "timestamp",
+        "type",
+        "schema_version",
+        "question",
+        "agents",
+        "config"
+      ],
+      "title": "RunStarted",
+      "type": "object"
+    },
+    "RunStatus": {
+      "enum": [
+        "completed",
+        "failed"
+      ],
+      "title": "RunStatus",
+      "type": "string"
+    },
+    "Stance": {
+      "description": "An agent's current leaning on the proposition (pre-vote).",
+      "enum": [
+        "APPROVE",
+        "DENY",
+        "UNDECIDED"
+      ],
+      "title": "Stance",
+      "type": "string"
+    },
+    "Tally": {
+      "additionalProperties": false,
+      "properties": {
+        "abstain": {
+          "default": 0,
+          "type": "integer"
+        },
+        "approve": {
+          "default": 0,
+          "type": "integer"
+        },
+        "deny": {
+          "default": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "approve",
+        "deny",
+        "abstain"
+      ],
+      "title": "Tally",
+      "type": "object"
+    },
+    "Verdict": {
+      "additionalProperties": false,
+      "properties": {
+        "confidence": {
+          "description": "Mean confidence of the agents on the winning side.",
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "type": "number"
+        },
+        "decisive_arguments": {
+          "items": {
+            "$ref": "#/$defs/DecisiveArgument"
+          },
+          "type": "array"
+        },
+        "outcome": {
+          "$ref": "#/$defs/Outcome"
+        },
+        "rule": {
+          "$ref": "#/$defs/VerdictRule"
+        },
+        "run_id": {
+          "type": "string"
+        },
+        "seq": {
+          "description": "1-based, strictly increasing within a run.",
+          "minimum": 1,
+          "type": "integer"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "tally": {
+          "$ref": "#/$defs/Tally"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "type": {
+          "const": "verdict",
+          "default": "verdict",
+          "type": "string"
+        }
+      },
+      "required": [
+        "run_id",
+        "seq",
+        "timestamp",
+        "type",
+        "rule",
+        "outcome",
+        "tally",
+        "confidence",
+        "summary",
+        "decisive_arguments"
+      ],
+      "title": "Verdict",
+      "type": "object"
+    },
+    "VerdictRule": {
+      "enum": [
+        "majority",
+        "unanimous"
+      ],
+      "title": "VerdictRule",
+      "type": "string"
+    },
+    "VoteCast": {
+      "additionalProperties": false,
+      "properties": {
+        "agent_id": {
+          "type": "string"
+        },
+        "confidence": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "type": "number"
+        },
+        "rationale": {
+          "type": "string"
+        },
+        "run_id": {
+          "type": "string"
+        },
+        "seq": {
+          "description": "1-based, strictly increasing within a run.",
+          "minimum": 1,
+          "type": "integer"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "type": {
+          "const": "vote_cast",
+          "default": "vote_cast",
+          "type": "string"
+        },
+        "vote": {
+          "$ref": "#/$defs/VoteChoice"
+        }
+      },
+      "required": [
+        "run_id",
+        "seq",
+        "timestamp",
+        "type",
+        "agent_id",
+        "vote",
+        "confidence",
+        "rationale"
+      ],
+      "title": "VoteCast",
+      "type": "object"
+    },
+    "VoteChoice": {
+      "enum": [
+        "APPROVE",
+        "DENY",
+        "ABSTAIN"
+      ],
+      "title": "VoteChoice",
+      "type": "string"
+    }
+  },
+  "$id": "https://magi.local/schema/magi-events.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Any event emitted by a MAGI deliberation run.",
+  "discriminator": {
+    "mapping": {
+      "agent_message": "#/$defs/AgentMessage",
+      "agent_revised_position": "#/$defs/AgentRevisedPosition",
+      "agent_thinking": "#/$defs/AgentThinking",
+      "phase_started": "#/$defs/PhaseStarted",
+      "run_completed": "#/$defs/RunCompleted",
+      "run_error": "#/$defs/RunError",
+      "run_started": "#/$defs/RunStarted",
+      "verdict": "#/$defs/Verdict",
+      "vote_cast": "#/$defs/VoteCast"
+    },
+    "propertyName": "type"
+  },
+  "oneOf": [
+    {
+      "$ref": "#/$defs/RunStarted"
+    },
+    {
+      "$ref": "#/$defs/PhaseStarted"
+    },
+    {
+      "$ref": "#/$defs/AgentThinking"
+    },
+    {
+      "$ref": "#/$defs/AgentMessage"
+    },
+    {
+      "$ref": "#/$defs/AgentRevisedPosition"
+    },
+    {
+      "$ref": "#/$defs/VoteCast"
+    },
+    {
+      "$ref": "#/$defs/Verdict"
+    },
+    {
+      "$ref": "#/$defs/RunError"
+    },
+    {
+      "$ref": "#/$defs/RunCompleted"
+    }
+  ],
+  "title": "MagiEvent"
+}
