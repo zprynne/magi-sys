@@ -6,11 +6,11 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field, SecretStr
+from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from magi.events import VerdictRule
-from magi.paths import DEFAULT_PERSONAS_DIR, DEFAULT_TRACES_DIR, ENV_FILE
+from magi.paths import DEFAULT_PERSONAS_DIR, DEFAULT_TRACES_DIR, ENV_FILE, REPO_ROOT
 
 Effort = Literal["low", "medium", "high", "xhigh", "max"]
 
@@ -41,6 +41,13 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:5173"
     traces_dir: Path = DEFAULT_TRACES_DIR
     personas_dir: Path = DEFAULT_PERSONAS_DIR
+
+    @field_validator("traces_dir", "personas_dir")
+    @classmethod
+    def _relative_to_repo(cls, value: Path) -> Path:
+        """Relative paths in .env mean "relative to the repo", not to wherever the
+        server happened to be started."""
+        return value if value.is_absolute() else REPO_ROOT / value
 
     @property
     def cors_origin_list(self) -> list[str]:

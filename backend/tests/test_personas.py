@@ -61,3 +61,12 @@ def test_council_needs_two_members(tmp_path: Path) -> None:
 def test_empty_directory(tmp_path: Path) -> None:
     with pytest.raises(PersonaError, match="no persona files"):
         load_personas(tmp_path)
+
+
+def test_relative_paths_in_settings_resolve_against_repo() -> None:
+    from magi.paths import REPO_ROOT
+    from magi.settings import Settings
+
+    settings = Settings(_env_file=None, traces_dir=Path("my-traces"), personas_dir=Path("/abs/p"))
+    assert settings.traces_dir == REPO_ROOT / "my-traces"
+    assert settings.personas_dir == Path("/abs/p")

@@ -2,6 +2,7 @@ import { clock, signalColor } from '../../lib/format'
 import type { MagiEvent } from '../../types/events'
 
 const SPEEDS = [0.5, 1, 2, 4, 8]
+const SLIDER_STEP_MS = 50
 
 interface Props {
   events: readonly MagiEvent[]
@@ -34,6 +35,9 @@ function phaseLabel(event: Extract<MagiEvent, { type: 'phase_started' }>): strin
 /** Scrubbable timeline with a tick for every phase, message, vote and verdict. */
 export function Timeline(props: Props) {
   const { events, offsets, duration, playhead, playing, speed, colors } = props
+  // Round the slider range up to a whole step so its far end reaches the last
+  // event; seeks past the end are clamped to `duration` by the caller.
+  const sliderMax = Math.max(Math.ceil(duration / SLIDER_STEP_MS) * SLIDER_STEP_MS, SLIDER_STEP_MS)
   const at = (ms: number) => `${String(duration > 0 ? (ms / duration) * 100 : 0)}%`
 
   return (
@@ -134,8 +138,8 @@ export function Timeline(props: Props) {
         <input
           type="range"
           min={0}
-          max={Math.max(duration, 1)}
-          step={50}
+          max={sliderMax}
+          step={SLIDER_STEP_MS}
           value={playhead}
           onChange={(e) => {
             props.onSeek(Number(e.target.value))
