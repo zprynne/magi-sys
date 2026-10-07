@@ -42,6 +42,9 @@ export function VerdictScreen({ question, verdict, votes, agents, onClose }: Pro
 
   useEffect(() => {
     dialog.current?.focus()
+  }, [])
+
+  useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') onClose()
     }
