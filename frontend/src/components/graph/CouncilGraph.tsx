@@ -44,13 +44,15 @@ export function CouncilGraph({ view }: { view: DeliberationView }) {
 
   const nodes = useMemo<(AgentFlowNode | CoreFlowNode)[]>(() => {
     const sealed = view.verdict === null
-    const agentNodes: AgentFlowNode[] = agents.map((info, index) => {
+    const agentNodes: AgentFlowNode[] = agents.flatMap((info, index) => {
+      const agent = view.byAgent[info.id]
+      if (!agent) return []
       const center = agentCenter(index, agents.length)
       return {
         id: info.id,
         type: 'agent',
         position: { x: center.x - AGENT_NODE_WIDTH / 2, y: center.y - AGENT_NODE_HEIGHT / 2 },
-        data: { agent: view.byAgent[info.id], sealed },
+        data: { agent, sealed },
         draggable: false,
         selectable: false,
         focusable: false,

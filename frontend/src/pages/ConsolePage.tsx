@@ -4,6 +4,7 @@ import { CouncilGraph } from '../components/graph/CouncilGraph'
 import { PhaseTrack } from '../components/PhaseTrack'
 import { ProposalForm, type Proposal } from '../components/ProposalForm'
 import { ActionButton, RunHeader } from '../components/RunHeader'
+import { Transcript } from '../components/transcript/Transcript'
 import { api, ApiError } from '../lib/api'
 import { useServerConfig } from '../lib/config'
 import { elapsed } from '../lib/format'
@@ -120,13 +121,13 @@ export function ConsolePage() {
         </div>
       </div>
 
-      <aside className="console-scroll min-h-0 border-t border-line lg:overflow-y-auto lg:border-t-0 lg:border-l">
-        {runId ? <TranscriptSlot /> : <div className="hidden lg:block">{proposal}</div>}
+      <aside className="flex min-h-0 flex-col border-t border-line lg:border-t-0 lg:border-l">
+        {runId ? (
+          <Transcript events={stream.events} view={view} />
+        ) : (
+          <div className="console-scroll hidden min-h-0 flex-1 overflow-y-auto lg:block">{proposal}</div>
+        )}
       </aside>
     </div>
   )
-}
-
-function TranscriptSlot() {
-  return <p className="px-6 py-5 font-mono text-[12px] text-faint">Transcript</p>
 }

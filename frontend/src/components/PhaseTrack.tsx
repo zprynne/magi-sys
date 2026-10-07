@@ -11,6 +11,7 @@ export function PhaseTrack({ view }: { view: DeliberationView }) {
 
   function stateOf(index: number): StepState {
     const step = steps[index]
+    if (!step) return 'upcoming'
     const pastDebate = view.phase === 'vote' || view.phase === 'verdict'
     if (step.phase === 'debate' && pastDebate && (step.round ?? 0) > view.roundsRun) return 'skipped'
     if (finished && index <= currentIndex) return 'done'

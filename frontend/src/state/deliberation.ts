@@ -105,7 +105,7 @@ function updateAgent(
   agentId: string,
   patch: (agent: AgentView) => Partial<AgentView>,
 ): Record<string, AgentView> {
-  const current = view.byAgent[agentId] as AgentView | undefined
+  const current = view.byAgent[agentId]
   if (!current) return view.byAgent
   return { ...view.byAgent, [agentId]: { ...current, ...patch(current) } }
 }
