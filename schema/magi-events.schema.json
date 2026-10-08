@@ -11,6 +11,18 @@
           "description": "Stable lowercase id, e.g. 'melchior'.",
           "type": "string"
         },
+        "model": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Model that runs this agent."
+        },
         "name": {
           "description": "Display name, e.g. 'MELCHIOR-1'.",
           "type": "string"
@@ -31,7 +43,8 @@
         "name",
         "title",
         "color",
-        "priorities"
+        "priorities",
+        "model"
       ],
       "title": "AgentInfo",
       "type": "object"
@@ -381,7 +394,20 @@
           "type": "boolean"
         },
         "model": {
+          "description": "Model that writes the verdict synthesis (the arbiter).",
           "type": "string"
+        },
+        "profile": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Model profile in use (e.g. 'mlx'), if any."
         },
         "verdict_rule": {
           "$ref": "#/$defs/VerdictRule"
@@ -391,6 +417,7 @@
         "max_rounds",
         "verdict_rule",
         "model",
+        "profile",
         "mock",
         "early_consensus"
       ],
@@ -467,7 +494,7 @@
           "type": "string"
         },
         "schema_version": {
-          "default": "1.0",
+          "default": "1.1",
           "type": "string"
         },
         "seq": {

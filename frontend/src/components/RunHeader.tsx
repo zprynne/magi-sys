@@ -19,6 +19,9 @@ export function RunHeader({ view, elapsedMs, status, actions }: Props) {
           <p className="mb-1 text-[13px] text-dim">
             {ruleLabel(config.verdict_rule, config.max_rounds)}
             {config.mock && <span className="ml-2 font-mono text-[11px] text-signal">recorded</span>}
+            {config.profile && (
+              <span className="ml-2 font-mono text-[11px] text-phosphor">{config.profile} profile</span>
+            )}
           </p>
         )}
         <h1 className="max-w-[68ch] text-[21px] leading-snug font-[500] text-ink md:text-[23px]">

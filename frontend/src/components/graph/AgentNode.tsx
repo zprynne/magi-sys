@@ -1,5 +1,5 @@
 import { Handle, Position, type Node, type NodeProps } from '@xyflow/react'
-import { percent, signalText, stanceLabel } from '../../lib/format'
+import { percent, shortModel, signalText, stanceLabel } from '../../lib/format'
 import type { AgentStatus, AgentView } from '../../state/deliberation'
 
 export const AGENT_NODE_WIDTH = 284
@@ -56,7 +56,14 @@ export function AgentNode({ data }: NodeProps<AgentFlowNode>) {
             </h3>
             <StatusLight status={status} color={info.color} />
           </header>
-          <p className="text-[13px] text-dim">{info.title}</p>
+          <p className="flex items-baseline justify-between gap-3 text-[13px] text-dim">
+            <span className="shrink-0">{info.title}</span>
+            {info.model && (
+              <span className="min-w-0 truncate font-mono text-[10px] text-faint" title={info.model}>
+                {shortModel(info.model)}
+              </span>
+            )}
+          </p>
 
           <div className="mt-2 h-px" style={{ background: `color-mix(in oklab, ${info.color} 30%, transparent)` }} />
 

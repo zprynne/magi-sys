@@ -29,6 +29,7 @@ from magi import __version__
 from magi.events import AgentInfo, EventBase, MagiEvent, VerdictRule, dump_event
 from magi.llm import build_chat_model
 from magi.mock import MockEngine
+from magi.models import resolve_roster
 from magi.paths import REPO_ROOT
 from magi.personas import load_personas
 from magi.runs import Engine, LiveEngine, ModelFactory, RunManager, StartRunRequest
@@ -45,8 +46,10 @@ class ConfigResponse(BaseModel):
     version: str
     mock: bool
     model: str
+    profile: str | None
     effort: Effort
     api_key_configured: bool
+    requires_api_key: bool
     max_rounds: int
     verdict_rule: VerdictRule
     early_consensus: bool
@@ -76,18 +79,25 @@ def create_app(
     settings = settings or get_settings()
     council = load_personas(settings.personas_dir)
     store = TraceStore(settings.traces_dir)
+    roster = resolve_roster(settings, council)
     if engine is None:
         engine = (
             MockEngine(store, speed=settings.mock_speed)
             if settings.mock
-            else LiveEngine(settings, council, model_factory)
+            else LiveEngine(settings, council, model_factory, roster)
         )
     # Mock replays are copies of existing traces, so they are not persisted again.
     manager = RunManager(engine, store, persist=not settings.mock)
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
-        mode = "MOCK (trace replay)" if settings.mock else f"LIVE ({settings.model})"
+        if settings.mock:
+            mode = "MOCK (trace replay)"
+        elif roster.profile:
+            models = ", ".join(sorted({spec.name for spec in roster.specs}))
+            mode = f"LIVE, profile {roster.profile!r}: {models}"
+        else:
+            mode = f"LIVE ({settings.model})"
         log.info("MAGI online: %s, %d agents, traces in %s", mode, len(council), store.directory)
         yield
         await manager.shutdown()
@@ -114,13 +124,15 @@ def create_app(
         return ConfigResponse(
             version=__version__,
             mock=settings.mock,
-            model=settings.model,
+            model=roster.arbiter.name,
+            profile=roster.profile,
             effort=settings.effort,
             api_key_configured=settings.anthropic_api_key is not None,
+            requires_api_key=roster.requires_api_key,
             max_rounds=settings.max_rounds,
             verdict_rule=settings.verdict_rule,
             early_consensus=settings.early_consensus,
-            agents=[p.info() for p in council],
+            agents=[p.info(model=roster.agents[p.id].name) for p in council],
             replayable=store.list() if settings.mock else [],
         )
 

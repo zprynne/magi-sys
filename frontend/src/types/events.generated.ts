@@ -51,6 +51,10 @@ export interface AgentInfo {
    */
   id: string;
   /**
+   * Model that runs this agent.
+   */
+  model: string | null;
+  /**
    * Display name, e.g. 'MELCHIOR-1'.
    */
   name: string;
@@ -64,7 +68,14 @@ export interface RunConfig {
   early_consensus: boolean;
   max_rounds: number;
   mock: boolean;
+  /**
+   * Model that writes the verdict synthesis (the arbiter).
+   */
   model: string;
+  /**
+   * Model profile in use (e.g. 'mlx'), if any.
+   */
+  profile: string | null;
   verdict_rule: VerdictRule;
 }
 export interface PhaseStarted {

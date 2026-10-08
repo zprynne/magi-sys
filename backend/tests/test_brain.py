@@ -30,10 +30,39 @@ def test_extract_json_object(text: str) -> None:
     assert extract_json_object(text) == {"a": 1}
 
 
-@pytest.mark.parametrize("text", ["", "no json here", "[1, 2]", '{"a": '])
+@pytest.mark.parametrize("text", ["", "no json here", "[1, 2]", "{"])
 def test_extract_json_object_rejects(text: str) -> None:
-    with pytest.raises(ValueError, match="no JSON object"):
+    with pytest.raises(ValueError, match="JSON"):
         extract_json_object(text)
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        # Missing closing brace (seen from Llama-3.2-3B)
+        ('{\n "stance": "APPROVE",\n "argument": "a b"', {"stance": "APPROVE", "argument": "a b"}),
+        # Missing comma between fields
+        ('{"a": "x" "b": 2}', {"a": "x", "b": 2}),
+        # Unescaped quotes inside a string
+        (
+            '{"argument": "She said "no" to it", "x": 1}',
+            {"argument": 'She said "no" to it', "x": 1},
+        ),
+    ],
+)
+def test_malformed_json_is_repaired(text: str, expected: dict[str, object]) -> None:
+    assert extract_json_object(text) == expected
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        '<think>Let me weigh this. {"not": "this"}</think>{"a": 1}',
+        'reasoning without an opening tag</think>\n{"a": 1}',
+    ],
+)
+def test_reasoning_blocks_are_ignored(text: str) -> None:
+    assert extract_json_object(text) == {"a": 1}
 
 
 def test_stances_and_votes_are_normalised() -> None:

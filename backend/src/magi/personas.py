@@ -22,13 +22,14 @@ class Persona(BaseModel):
     priorities: list[str] = Field(default_factory=list)
     system_prompt: str
 
-    def info(self) -> AgentInfo:
+    def info(self, model: str | None = None) -> AgentInfo:
         return AgentInfo(
             id=self.id,
             name=self.name,
             title=self.title,
             color=self.color,
             priorities=list(self.priorities),
+            model=model,
         )
 
     @property

@@ -16,7 +16,7 @@ from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 
-SCHEMA_VERSION = "1.0"
+SCHEMA_VERSION = "1.1"
 
 
 class Phase(StrEnum):
@@ -77,12 +77,16 @@ class AgentInfo(_Model):
     title: str = Field(description="Persona title, e.g. 'The Scientist'.")
     color: str = Field(description="CSS color used for this agent in the UI.")
     priorities: list[str] = Field(default_factory=list)
+    model: str | None = Field(default=None, description="Model that runs this agent.")
 
 
 class RunConfig(_Model):
     max_rounds: int = Field(ge=0)
     verdict_rule: VerdictRule
-    model: str
+    model: str = Field(description="Model that writes the verdict synthesis (the arbiter).")
+    profile: str | None = Field(
+        default=None, description="Model profile in use (e.g. 'mlx'), if any."
+    )
     mock: bool = False
     early_consensus: bool = True
 

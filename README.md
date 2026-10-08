@@ -43,6 +43,26 @@ make frontend           # terminal 2
 
 A live run makes 13 model calls with the default two debate rounds: 3 openings, 3 per round, 3 votes and a synthesis. With Claude Opus 5.5 at medium effort this takes about one to two minutes.
 
+### Local models (Apple Silicon, no API key)
+
+Each agent can run on its own local model. The bundled profile, [`models/mlx.yaml`](models/mlx.yaml), seats three model families served by [mlx-lm](https://github.com/ml-explore/mlx-lm):
+
+| Agent | Model | Memory |
+|---|---|---|
+| MELCHIOR-1 (and the arbiter) | `mlx-community/Qwen3.5-9B-MLX-4bit` | ~5.4 GB |
+| BALTHASAR-2 | `mlx-community/Qwen3-8B-4bit` | ~4.7 GB |
+| CASPAR-3 | `mlx-community/Llama-3.2-3B-Instruct-4bit` | ~1.9 GB |
+
+```bash
+make mlx        # terminal 1: one mlx_lm.server per model (checks they're downloaded and fit)
+make local      # terminal 2: API using models/mlx.yaml
+make frontend   # terminal 3
+```
+
+`uv run --extra mlx magi-mlx --check` prints the plan and a memory estimate without starting anything. On a 24 GB Mac the council uses about 12-15 GB and a two-round deliberation takes just under two minutes. See [docs/resource-usage.md](docs/resource-usage.md) for measurements and ways to use less memory.
+
+Any OpenAI-compatible server works the same way (LM Studio, Ollama, vLLM, llama.cpp): set `provider: openai` and its `base_url` in a profile. Profiles can also mix local agents with Claude.
+
 ### Single process
 
 ```bash
@@ -157,7 +177,8 @@ All settings come from the environment or `<repo>/.env`. See [`.env.example`](.e
 
 | Variable                | Default                  | Notes                                                                                       |
 | ----------------------- | ------------------------ | ------------------------------------------------------------------------------------------- |
-| `ANTHROPIC_API_KEY`     |                          | Required for live mode                                                                      |
+| `ANTHROPIC_API_KEY`     |                          | Required when any agent uses Claude                                                         |
+| `MAGI_MODELS`           |                          | Model profile, e.g. `models/mlx.yaml`; unset means every agent uses `MAGI_MODEL`             |
 | `MAGI_MODEL`            | `claude-opus-5-5`        | Any Claude model id                                                                          |
 | `MAGI_EFFORT`           | `medium`                 | `low` to `max`; controls reasoning depth and token spend                                     |
 | `MAGI_MAX_TOKENS`       | `8000`                   | Per call, including thinking                                                                 |
@@ -189,15 +210,36 @@ system_prompt: |
 
 Edit a file to retune an agent, or point `MAGI_PERSONAS_DIR` at a different directory to swap the whole council. The graph, prompts, vote rules and UI work with any council of two or more; agents are laid out evenly on a circle, so three of them form the triangle. Shared deliberation rules (brevity, address others by name, JSON replies) are added in [`prompts.py`](backend/src/magi/prompts.py).
 
+## Model profiles
+
+Personas define *who* an agent is; a profile in [`models/`](models) defines *what runs it*:
+
+```yaml
+defaults:                 # merged into every entry
+  provider: openai        # openai = any OpenAI-compatible API; anthropic = Claude
+  max_tokens: 1024
+  extra_body:             # passed through to the server
+    chat_template_kwargs: {enable_thinking: false}
+agents:
+  melchior: {name: mlx-community/Qwen3.5-9B-MLX-4bit, base_url: http://127.0.0.1:8091/v1}
+  caspar:   {provider: anthropic, name: claude-sonnet-5-5}
+arbiter:    {name: mlx-community/Qwen3.5-9B-MLX-4bit, base_url: http://127.0.0.1:8091/v1}
+```
+
+Agents that share a `base_url` share one server and one copy of the weights. Agents a profile doesn't list keep `MAGI_MODEL`. Each run's `run_started` event records which model ran each agent, so replays show it too.
+
+Small local models produce malformed JSON more often (a missing closing brace, unescaped quotes). Replies are parsed strictly first, then repaired with [json-repair](https://github.com/mangiucugna/json_repair), then validated against the schema. `<think>` blocks from reasoning models are stripped.
+
 ## Development
 
 ```bash
-make test        # pytest (backend, 99 tests) + vitest (frontend reducer)
+make test        # pytest (backend, 121 tests) + vitest (frontend reducer)
 make lint        # ruff + eslint (typescript-eslint strict, react-hooks)
 make typecheck   # mypy --strict (src, tests, scripts) + tsc
 make check       # all of the above + schema/type drift checks
 make types       # regenerate JSON Schema and TS types after editing events.py
 make traces      # rebuild traces/example-*.jsonl from backend/scripts/build_example_traces.py
+make resources   # disk and memory report (see docs/resource-usage.md)
 ```
 
 The backend tests drive the real LangGraph graph with a scripted LangChain chat model (`tests/fakes.py`) that answers by speaker and phase. They cover parallel fan-out, reply resolution, revisions, early consensus, zero-round runs, both vote rules, repair retries, refusals, synthesis fallback, citation validation, mock replay timing, SSE resume, trace persistence and path-traversal safety.
@@ -214,7 +256,11 @@ backend/
     mock.py            MockEngine (trace replay)
     traces.py          JSONL trace store
     server.py          FastAPI app + SSE
-    llm.py, settings.py, personas.py, emitter.py
+    models.py          model profiles: which model runs each agent
+    llm.py             builds Claude or OpenAI-compatible clients per model
+    mlx_launcher.py    magi-mlx: starts the mlx_lm servers a profile needs
+    resources.py       magi-resources: disk and memory report
+    settings.py, personas.py, emitter.py
   scripts/build_example_traces.py
   tests/
 frontend/src/
@@ -225,6 +271,8 @@ frontend/src/
   components/replay/       timeline scrubber
   pages/                   Console, Replays, Replay player
   types/events.generated.ts
+models/     model profiles (mlx.yaml)
+docs/       resource-usage.md
 personas/   schema/   traces/
 ```
 
@@ -237,7 +285,7 @@ personas/   schema/   traces/
 
 ## Status
 
-**Working:** everything in this README, in both live and mock mode. The live path is covered by tests with scripted models, and the exact request sent to the Claude API has been checked, but this repository has not yet run a deliberation against the real API. Run one with your key before relying on it.
+**Working:** everything in this README. Mock mode and the local MLX council have been run end to end. The Claude path is covered by tests with scripted models and its request payload has been checked, but it has not yet been run against the real API.
 
 **Limitations**
 
@@ -246,4 +294,4 @@ personas/   schema/   traces/
 - There is no authentication or rate limiting, so treat the server as a local tool.
 - Mock mode picks the recorded deliberation closest to your question. It does not answer new questions.
 
-**Next steps:** stream argument tokens into the agent panels, pick the model, effort and personas per run in the UI, show token and cost per run, add CI and Playwright end-to-end tests, and record the demo GIF.
+**Next steps:** tracing with Langfuse, an evaluation harness (debate vs single model vs self-consistency), streaming argument tokens, picking the profile per run in the UI, CI and Playwright tests, and the demo GIF.

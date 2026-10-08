@@ -28,6 +28,7 @@ from magi.events import (
     VerdictRule,
 )
 from magi.graph import DeliberationContext, run_deliberation
+from magi.models import ModelSpec, Roster, resolve_roster
 from magi.personas import Persona
 from magi.settings import Settings
 from magi.traces import TraceStore, TraceWriter
@@ -94,33 +95,47 @@ class Engine(Protocol):
     async def run(self, emitter: EventEmitter, request: StartRunRequest) -> None: ...
 
 
-ModelFactory = Callable[[Settings], BaseChatModel]
+ModelFactory = Callable[[ModelSpec, Settings], BaseChatModel]
 
 
 class LiveEngine:
-    """Runs the LangGraph deliberation against a real (or injected) chat model."""
+    """Runs the LangGraph deliberation, each agent on the model its roster assigns."""
 
     def __init__(
-        self, settings: Settings, council: Sequence[Persona], model_factory: ModelFactory
+        self,
+        settings: Settings,
+        council: Sequence[Persona],
+        model_factory: ModelFactory,
+        roster: Roster | None = None,
     ) -> None:
         self.settings = settings
         self.council = list(council)
+        self.roster = roster or resolve_roster(settings, council)
         self._model_factory = model_factory
-        self._model: BaseChatModel | None = None
+        self._models: dict[str, BaseChatModel] = {}
+
+    def _model(self, spec: ModelSpec) -> BaseChatModel:
+        # One client per distinct spec: agents sharing a server share a client.
+        if spec.key not in self._models:
+            self._models[spec.key] = self._model_factory(spec, self.settings)
+        return self._models[spec.key]
 
     def _brain(self) -> CouncilBrain:
-        if self._model is None:
-            self._model = self._model_factory(self.settings)
-        return CouncilBrain(self._model, self.council)
+        agent_models = {pid: self._model(spec) for pid, spec in self.roster.agents.items()}
+        arbiter = self._model(self.roster.arbiter)
+        default = next(iter(agent_models.values()), arbiter)
+        return CouncilBrain(default, self.council, agent_models=agent_models, arbiter_model=arbiter)
 
     async def run(self, emitter: EventEmitter, request: StartRunRequest) -> None:
         settings = self.settings
+        roster = self.roster
         config = RunConfig(
             max_rounds=request.max_rounds
             if request.max_rounds is not None
             else settings.max_rounds,
             verdict_rule=request.verdict_rule or settings.verdict_rule,
-            model=settings.model,
+            model=roster.arbiter.name,
+            profile=roster.profile,
             mock=False,
             early_consensus=settings.early_consensus,
         )
@@ -128,7 +143,7 @@ class LiveEngine:
         emitter.emit(
             RunStarted,
             question=request.question,
-            agents=[p.info() for p in self.council],
+            agents=[p.info(model=roster.agents[p.id].name) for p in self.council],
             config=config,
         )
         status = RunStatus.COMPLETED

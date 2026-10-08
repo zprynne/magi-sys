@@ -41,13 +41,17 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:5173"
     traces_dir: Path = DEFAULT_TRACES_DIR
     personas_dir: Path = DEFAULT_PERSONAS_DIR
+    # Optional model profile (see magi.models), e.g. models/mlx.yaml
+    models: Path | None = None
 
-    @field_validator("traces_dir", "personas_dir")
+    @field_validator("traces_dir", "personas_dir", "models")
     @classmethod
-    def _relative_to_repo(cls, value: Path) -> Path:
+    def _relative_to_repo(cls, value: Path | None) -> Path | None:
         """Relative paths in .env mean "relative to the repo", not to wherever the
         server happened to be started."""
-        return value if value.is_absolute() else REPO_ROOT / value
+        if value is None or value.is_absolute():
+            return value
+        return REPO_ROOT / value
 
     @property
     def cors_origin_list(self) -> list[str]:

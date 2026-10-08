@@ -14,6 +14,7 @@ from fastapi import FastAPI
 
 from magi.events import RunStatus
 from magi.llm import ConfigurationError
+from magi.models import ModelSpec
 from magi.paths import DEFAULT_TRACES_DIR
 from magi.server import create_app
 from magi.settings import Settings
@@ -30,7 +31,7 @@ def settings_for(traces_dir: Path, **overrides: Any) -> Settings:
     )
 
 
-def scripted(_: Settings) -> ScriptedChatModel:
+def scripted(_spec: ModelSpec, _settings: Settings) -> ScriptedChatModel:
     return ScriptedChatModel(script=standard_script())
 
 
@@ -133,7 +134,7 @@ async def test_invalid_run_requests(client: httpx.AsyncClient, body: dict[str, A
 
 
 async def test_missing_api_key_fails_the_run_cleanly(traces_dir: Path) -> None:
-    def no_key(_: Settings) -> ScriptedChatModel:
+    def no_key(_spec: ModelSpec, _settings: Settings) -> ScriptedChatModel:
         raise ConfigurationError("ANTHROPIC_API_KEY is not set")
 
     app: FastAPI = create_app(settings_for(traces_dir), model_factory=no_key)
@@ -150,7 +151,7 @@ async def test_missing_api_key_fails_the_run_cleanly(traces_dir: Path) -> None:
 async def test_mock_mode_replays_without_a_model(traces_dir: Path) -> None:
     shutil.copy(DEFAULT_TRACES_DIR / "example-delivery-drones.jsonl", traces_dir)
 
-    def forbidden(_: Settings) -> ScriptedChatModel:
+    def forbidden(_spec: ModelSpec, _settings: Settings) -> ScriptedChatModel:
         raise AssertionError("mock mode must not build a model")
 
     settings = settings_for(traces_dir, mock=True, mock_speed=1000.0)
@@ -172,3 +173,20 @@ async def test_mock_mode_replays_without_a_model(traces_dir: Path) -> None:
     assert events[-1]["type"] == "run_completed"
     # Replays are not persisted a second time.
     assert files_in(traces_dir) == ["example-delivery-drones.jsonl"]
+
+
+async def test_config_for_all_local_profile(traces_dir: Path) -> None:
+    from magi.paths import REPO_ROOT
+
+    settings = Settings(
+        _env_file=None, traces_dir=traces_dir, models=REPO_ROOT / "models" / "mlx.yaml"
+    )
+    app = create_app(settings, model_factory=scripted)
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://m") as c:
+        data = (await c.get("/api/config")).json()
+    assert data["profile"] == "mlx"
+    assert data["requires_api_key"] is False
+    assert data["api_key_configured"] is False
+    assert {a["id"]: a["model"] for a in data["agents"]}["balthasar"] == (
+        "mlx-community/Qwen3-8B-4bit"
+    )

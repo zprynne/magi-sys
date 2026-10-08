@@ -67,3 +67,8 @@ export function ruleLabel(rule: string, rounds: number): string {
   const roundText = rounds === 1 ? '1 debate round' : `${rounds} debate rounds`
   return `${ruleText}, up to ${roundText}`
 }
+
+/** "mlx-community/Qwen3-8B-4bit" -> "Qwen3-8B-4bit"; "claude-opus-5-5" unchanged. */
+export function shortModel(model: string): string {
+  return model.split('/').pop() ?? model
+}

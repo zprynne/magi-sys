@@ -20,7 +20,7 @@ export function ProposalForm({ config, busy, error, onSubmit }: Props) {
   const [question, setQuestion] = useState('')
   const [maxRounds, setMaxRounds] = useState(config.max_rounds)
   const [rule, setRule] = useState<VerdictRule>(config.verdict_rule)
-  const missingKey = !config.mock && !config.api_key_configured
+  const missingKey = !config.mock && config.requires_api_key && !config.api_key_configured
   const tooShort = question.trim().length < 3
 
   function submit(event: SyntheticEvent) {
@@ -101,7 +101,8 @@ export function ProposalForm({ config, busy, error, onSubmit }: Props) {
 
       {missingKey && (
         <p className="border-l-2 border-alarm pl-3 text-[13px] text-alarm">
-          The server has no ANTHROPIC_API_KEY. Add it to .env and restart, or run with MAGI_MOCK=1.
+          The server has no ANTHROPIC_API_KEY. Add it to .env and restart, run with MAGI_MOCK=1, or use
+          the local MLX council (make mlx, then make local).
         </p>
       )}
       {error && <p className="border-l-2 border-alarm pl-3 text-[13px] text-alarm">{error}</p>}

@@ -18,3 +18,6 @@ dist/
 # Run traces: keep the bundled examples, ignore everything recorded locally
 traces/*.jsonl
 !traces/example-*.jsonl
+
+# mlx_lm server logs (magi-mlx)
+backend/.mlx-logs/

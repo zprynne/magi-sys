@@ -15,8 +15,12 @@ export interface ServerConfig {
   version: string
   mock: boolean
   model: string
+  /** Model profile in use (e.g. "mlx"), or null when every agent uses `model`. */
+  profile: string | null
   effort: string
   api_key_configured: boolean
+  /** False when every agent runs on a local/OpenAI-compatible model. */
+  requires_api_key: boolean
   max_rounds: number
   verdict_rule: VerdictRule
   early_consensus: boolean

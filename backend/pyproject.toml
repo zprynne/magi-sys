@@ -5,8 +5,10 @@ description = "MAGI: a three-agent deliberation system with a live visual consol
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.142.2",
+    "json-repair>=0.63.5",
     "langchain-anthropic>=1.7.5",
     "langchain-core>=1.6.7",
+    "langchain-openai>=1.6.7",
     "langgraph>=1.2.14",
     "pydantic>=2.13.5",
     "pydantic-settings>=2.15.0",
@@ -17,6 +19,13 @@ dependencies = [
 [project.scripts]
 magi-schema = "magi.schema_export:main"
 magi-server = "magi.server:main"
+magi-mlx = "magi.mlx_launcher:main"
+magi-resources = "magi.resources:main"
+
+[project.optional-dependencies]
+mlx = [
+    "mlx-lm>=0.32.0 ; platform_machine == 'arm64' and sys_platform == 'darwin'",
+]
 
 [build-system]
 requires = ["uv_build>=0.12.16,<0.13.0"]

@@ -25,10 +25,14 @@ function ModeBadge() {
       </span>
     )
   }
+  const models = [...new Set(config.agents.map((a) => a.model).filter(Boolean))].join(', ')
   return (
-    <span className="flex items-center gap-2 font-mono text-[11px] text-phosphor" title={`Effort: ${config.effort}`}>
+    <span
+      className="flex items-center gap-2 font-mono text-[11px] text-phosphor"
+      title={config.profile ? `Profile ${config.profile}: ${models}` : `Effort: ${config.effort}`}
+    >
       <span className="size-1.5 rounded-full bg-phosphor shadow-[0_0_6px_var(--color-phosphor)]" aria-hidden />
-      {config.model}
+      {config.profile ? `${config.profile} profile` : config.model}
     </span>
   )
 }

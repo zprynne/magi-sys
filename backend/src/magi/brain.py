@@ -12,9 +12,10 @@ from __future__ import annotations
 import json
 import logging
 import re
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from typing import Any
 
+import json_repair
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from pydantic import BaseModel, Field, ValidationError, field_validator
@@ -90,18 +91,42 @@ class SynthesisOutput(BaseModel):
 # --------------------------------------------------------------------------- #
 
 _FENCE = re.compile(r"```(?:json)?\s*(.*?)```", re.DOTALL)
+_THINK = re.compile(r"<think>.*?</think>", re.DOTALL)
+
+
+def strip_reasoning(text: str) -> str:
+    """Drop the <think>...</think> blocks that local reasoning models (Qwen3,
+    DeepSeek-R1) emit before their answer, including an unclosed opening block."""
+    text = _THINK.sub("", text)
+    if "</think>" in text:
+        text = text.rsplit("</think>", 1)[1]
+    return text
 
 
 def extract_json_object(text: str) -> dict[str, Any]:
-    """Pull the first JSON object out of a model reply (tolerates code fences and
-    surrounding prose)."""
+    """Pull the first JSON object out of a model reply.
+
+    Tolerates reasoning blocks, code fences and surrounding prose. If strict
+    parsing fails, the JSON is repaired (missing closing braces, missing
+    commas, unescaped quotes: common with small local models). Callers still
+    validate the result against a schema, so repair cannot invent a valid answer.
+    """
+    text = strip_reasoning(text)
     fenced = _FENCE.search(text)
     candidate = fenced.group(1) if fenced else text
     start = candidate.find("{")
-    end = candidate.rfind("}")
-    if start == -1 or end <= start:
+    if start == -1:
         raise ValueError("no JSON object found in reply")
-    data = json.loads(candidate[start : end + 1])
+    end = candidate.rfind("}")
+    try:
+        if end <= start:
+            raise json.JSONDecodeError("unterminated object", candidate, start)
+        data = json.loads(candidate[start : end + 1])
+    except json.JSONDecodeError as exc:
+        data = json_repair.loads(candidate[start:])
+        if not isinstance(data, dict) or not data:
+            raise ValueError(f"invalid JSON: {exc.msg}") from exc
+        log.info("repaired malformed JSON reply (%s)", exc.msg)
     if not isinstance(data, dict):
         raise ValueError("reply JSON is not an object")
     return data
@@ -125,15 +150,30 @@ def _short_error(exc: Exception) -> str:
 
 
 class CouncilBrain:
-    def __init__(self, model: BaseChatModel, council: Sequence[Persona], max_attempts: int = 2):
+    """``model`` serves everyone unless ``agent_models`` (by persona id) or
+    ``arbiter_model`` say otherwise, so each agent can run on its own model."""
+
+    def __init__(
+        self,
+        model: BaseChatModel,
+        council: Sequence[Persona],
+        max_attempts: int = 2,
+        *,
+        agent_models: Mapping[str, BaseChatModel] | None = None,
+        arbiter_model: BaseChatModel | None = None,
+    ):
         self.model = model
         self.council = list(council)
         self.max_attempts = max_attempts
+        self.agent_models = dict(agent_models or {})
+        self.arbiter_model = arbiter_model or model
+
+    def model_for(self, persona: Persona) -> BaseChatModel:
+        return self.agent_models.get(persona.id, self.model)
 
     async def opening(self, persona: Persona, question: str) -> OpeningOutput:
-        return await self._ask(
-            self._system(persona), prompts.opening_prompt(question), OpeningOutput
-        )
+        user = prompts.opening_prompt(question)
+        return await self._ask(self.model_for(persona), self._system(persona), user, OpeningOutput)
 
     async def debate(
         self,
@@ -145,7 +185,7 @@ class CouncilBrain:
         others: Sequence[TranscriptEntry],
     ) -> DebateOutput:
         user = prompts.debate_prompt(question, round_number, max_rounds, own, others)
-        return await self._ask(self._system(persona), user, DebateOutput)
+        return await self._ask(self.model_for(persona), self._system(persona), user, DebateOutput)
 
     async def vote(
         self,
@@ -155,7 +195,7 @@ class CouncilBrain:
         others: Sequence[TranscriptEntry],
     ) -> VoteOutput:
         user = prompts.vote_prompt(question, own, others)
-        return await self._ask(self._system(persona), user, VoteOutput)
+        return await self._ask(self.model_for(persona), self._system(persona), user, VoteOutput)
 
     async def synthesize(
         self,
@@ -167,16 +207,20 @@ class CouncilBrain:
         votes: Sequence[VoteEntry],
     ) -> SynthesisOutput:
         user = prompts.synthesis_prompt(question, rule, outcome, tally_text, transcript, votes)
-        return await self._ask(prompts.ARBITER_SYSTEM_PROMPT, user, SynthesisOutput)
+        return await self._ask(
+            self.arbiter_model, prompts.ARBITER_SYSTEM_PROMPT, user, SynthesisOutput
+        )
 
     def _system(self, persona: Persona) -> str:
         return prompts.council_system_prompt(persona, self.council)
 
-    async def _ask[T: BaseModel](self, system: str, user: str, schema: type[T]) -> T:
+    async def _ask[T: BaseModel](
+        self, model: BaseChatModel, system: str, user: str, schema: type[T]
+    ) -> T:
         last_error = "unknown error"
         for attempt in range(1, self.max_attempts + 1):
             content = user if attempt == 1 else user + prompts.repair_suffix(last_error)
-            reply = await self.model.ainvoke([SystemMessage(system), HumanMessage(content)])
+            reply = await model.ainvoke([SystemMessage(system), HumanMessage(content)])
             if not isinstance(reply, AIMessage):  # pragma: no cover - defensive
                 raise AgentOutputError(f"unexpected reply type {type(reply).__name__}")
             if reply.response_metadata.get("stop_reason") == "refusal":

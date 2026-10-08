@@ -546,7 +546,7 @@ TRIAGE = Example(
 
 
 def main() -> None:
-    agents = [p.info() for p in load_personas(DEFAULT_PERSONAS_DIR)]
+    agents = [p.info(model="claude-opus-5-5") for p in load_personas(DEFAULT_PERSONAS_DIR)]
     DEFAULT_TRACES_DIR.mkdir(parents=True, exist_ok=True)
     for example in (DRONES, TRIAGE):
         events = TraceBuilder(example, agents).build()
