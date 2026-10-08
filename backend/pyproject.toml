@@ -2,6 +2,7 @@
 name = "magi"
 version = "0.1.0"
 description = "MAGI: a three-agent deliberation system with a live visual console"
+license = "MIT"
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.142.2",

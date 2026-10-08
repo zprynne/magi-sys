@@ -295,3 +295,7 @@ personas/   schema/   traces/
 - Mock mode picks the recorded deliberation closest to your question. It does not answer new questions.
 
 **Next steps:** tracing with Langfuse, an evaluation harness (debate vs single model vs self-consistency), streaming argument tokens, picking the profile per run in the UI, CI and Playwright tests, and the demo GIF.
+
+## License
+
+[MIT](LICENSE). MAGI is an independent fan-inspired project and is not affiliated with the creators of *Neon Genesis Evangelion*.
