@@ -6,7 +6,15 @@ Three AI agents with different priorities debate a proposition, vote, and reach 
 - **BALTHASAR-2, The Guardian**: risk, safety, protecting people
 - **CASPAR-3, The Individual**: intuition, ethics, human desire and tradeoffs
 
-Inspired by the MAGI supercomputer from *Neon Genesis Evangelion*. All visuals are original.
+Inspired by the MAGI supercomputer from *Neon Genesis Evangelion*, where three computers modelled on one person's three sides vote on every decision:
+
+<p align="center">
+  <img src="docs/media/magi-original.gif" alt="The MAGI voting display from Neon Genesis Evangelion" width="420">
+  <br>
+  <sub>The original MAGI display. <i>Neon Genesis Evangelion</i> (1995) © khara / Project Eva. Shown for reference; not part of this project's licence.</sub>
+</p>
+
+The console's own visuals are original.
 
 ## Demo
 
@@ -298,4 +306,4 @@ personas/   schema/   traces/
 
 ## License
 
-[MIT](LICENSE). MAGI is an independent fan-inspired project and is not affiliated with the creators of *Neon Genesis Evangelion*.
+[MIT](LICENSE), covering this project's code and assets. The reference GIF in `docs/media/magi-original.gif` belongs to its rights holders and is not covered. MAGI is an independent fan-inspired project and is not affiliated with the creators of *Neon Genesis Evangelion*.
