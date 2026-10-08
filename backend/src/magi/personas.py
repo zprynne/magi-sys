@@ -45,7 +45,9 @@ def load_personas(directory: Path) -> list[Persona]:
     files = sorted(directory.glob("*.yaml")) + sorted(directory.glob("*.yml"))
     if not files:
         raise PersonaError(f"no persona files (*.yaml) found in {directory}")
-    personas = [Persona.model_validate(yaml.safe_load(path.read_text())) for path in files]
+    personas = [
+        Persona.model_validate(yaml.safe_load(path.read_text(encoding="utf-8"))) for path in files
+    ]
     ids = [p.id for p in personas]
     if len(set(ids)) != len(ids):
         raise PersonaError(f"duplicate persona ids in {directory}: {ids}")

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import platform
 import signal
 import subprocess
 import sys
@@ -140,6 +141,15 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     # Flush progress lines immediately, even when output goes to a pipe or file.
     sys.stdout.reconfigure(line_buffering=True)  # type: ignore[union-attr]
+
+    if not (sys.platform == "darwin" and platform.machine() == "arm64"):
+        print(
+            "magi-mlx needs an Apple Silicon Mac (MLX only runs there).\n"
+            "On Windows or Linux, serve local models with Ollama or LM Studio and use\n"
+            "models/ollama.yaml instead: see 'Local models' in the README.",
+            file=sys.stderr,
+        )
+        return 2
 
     settings = Settings()
     # CLI paths are relative to the working directory; .env paths to the repo.

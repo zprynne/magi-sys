@@ -1,0 +1,32 @@
+# All-local council for Windows, Linux (or Mac) via Ollama: https://ollama.com
+#
+#   ollama pull qwen3:8b && ollama pull llama3.1:8b && ollama pull gemma3:4b
+#   uv run tasks.py dev --models models/ollama.yaml
+#
+# One Ollama server serves every model by name, loading them on demand. Three
+# models at once need roughly 14 GB of GPU/unified memory (or system RAM on a
+# CPU-only machine). With less, Ollama swaps models in and out, which works
+# but is slow; point all three agents at one model to avoid that.
+#
+# LM Studio works the same way: set base_url to http://127.0.0.1:1234/v1 and
+# use the model names LM Studio shows.
+#
+# Untested so far: tuned from the MLX profile, which has been run end to end.
+defaults:
+  provider: openai              # Ollama's OpenAI-compatible API
+  base_url: http://127.0.0.1:11434/v1
+  # Qwen3 may reason before answering; leave room so the JSON isn't cut off.
+  max_tokens: 2048
+  temperature: 0.7
+
+agents:
+  melchior:
+    name: qwen3:8b
+  balthasar:
+    name: llama3.1:8b
+  caspar:
+    name: gemma3:4b
+
+arbiter:
+  name: qwen3:8b
+  temperature: 0.2

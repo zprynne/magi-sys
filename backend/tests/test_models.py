@@ -29,7 +29,7 @@ def settings(**overrides: Any) -> Settings:
 
 def write_profile(tmp_path: Path, text: str) -> Path:
     path = tmp_path / "profile.yaml"
-    path.write_text(text)
+    path.write_text(text, encoding="utf-8")
     return path
 
 
@@ -183,3 +183,13 @@ def test_plan_servers_skips_remote_and_anthropic() -> None:
         }
     )
     assert plans == []
+
+
+def test_bundled_ollama_profile(council: list[Persona]) -> None:
+    roster = resolve_roster(settings(models=REPO_ROOT / "models" / "ollama.yaml"), council)
+    assert roster.profile == "ollama"
+    assert not roster.requires_api_key
+    # One Ollama server serves every model by name.
+    assert {spec.base_url for spec in roster.specs} == {"http://127.0.0.1:11434/v1"}
+    assert {spec.name for spec in roster.specs} == {"qwen3:8b", "llama3.1:8b", "gemma3:4b"}
+    assert roster.arbiter.temperature == 0.2

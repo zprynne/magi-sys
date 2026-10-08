@@ -36,7 +36,7 @@ def write(directory: Path, name: str, **fields: object) -> None:
         f"{key}: {value!r}" if isinstance(value, str) else f"{key}: {value}"
         for key, value in body.items()
     ]
-    (directory / f"{name}.yaml").write_text("\n".join(lines) + "\n")
+    (directory / f"{name}.yaml").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
 def test_custom_council_is_sorted_by_order(tmp_path: Path) -> None:
@@ -63,10 +63,11 @@ def test_empty_directory(tmp_path: Path) -> None:
         load_personas(tmp_path)
 
 
-def test_relative_paths_in_settings_resolve_against_repo() -> None:
+def test_relative_paths_in_settings_resolve_against_repo(tmp_path: Path) -> None:
     from magi.paths import REPO_ROOT
     from magi.settings import Settings
 
-    settings = Settings(_env_file=None, traces_dir=Path("my-traces"), personas_dir=Path("/abs/p"))
+    # tmp_path is absolute on every OS ("/abs/p" is not absolute on Windows).
+    settings = Settings(_env_file=None, traces_dir=Path("my-traces"), personas_dir=tmp_path)
     assert settings.traces_dir == REPO_ROOT / "my-traces"
-    assert settings.personas_dir == Path("/abs/p")
+    assert settings.personas_dir == tmp_path

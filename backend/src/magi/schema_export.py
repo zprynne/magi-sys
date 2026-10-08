@@ -19,7 +19,7 @@ def main(argv: list[str] | None = None) -> int:
 
     text = json_schema_text()
     if args.check:
-        current = SCHEMA_FILE.read_text() if SCHEMA_FILE.exists() else ""
+        current = SCHEMA_FILE.read_text(encoding="utf-8") if SCHEMA_FILE.exists() else ""
         if current != text:
             print(f"{SCHEMA_FILE} is stale; run `uv run magi-schema`.", file=sys.stderr)
             return 1
@@ -27,7 +27,8 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     SCHEMA_FILE.parent.mkdir(parents=True, exist_ok=True)
-    SCHEMA_FILE.write_text(text)
+    # LF on every OS, so the committed file is identical wherever it is generated.
+    SCHEMA_FILE.write_text(text, encoding="utf-8", newline="\n")
     print(f"wrote {SCHEMA_FILE}")
     return 0
 

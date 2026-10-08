@@ -26,7 +26,7 @@ EXAMPLES = sorted(DEFAULT_TRACES_DIR.glob("example-*.jsonl"))
 def test_committed_schema_matches_models() -> None:
     """schema/magi-events.schema.json (and the TS types generated from it) must
     be regenerated whenever events.py changes: `uv run magi-schema`."""
-    assert SCHEMA_FILE.read_text() == json_schema_text()
+    assert SCHEMA_FILE.read_text(encoding="utf-8") == json_schema_text()
 
 
 def test_schema_covers_every_event_type() -> None:

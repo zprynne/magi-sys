@@ -3,8 +3,10 @@
 A running record of MAGI's disk and memory footprint as the project grows. Regenerate the current numbers with:
 
 ```bash
-make resources     # disk, models, and memory of running MAGI / mlx_lm processes
+uv run tasks.py resources --models models/mlx.yaml   # disk, models, memory of running MAGI / model servers
 ```
+
+It runs on macOS, Linux and Windows. Only macOS reports the full GPU-inclusive footprint; elsewhere memory is the resident set (working set on Windows).
 
 Memory figures use macOS `footprint` (physical footprint), which counts the GPU memory MLX allocates. Activity Monitor's "Memory" column and `ps` RSS undercount it badly: Qwen3.5-9B shows about 3.5 GB RSS but 5.4 GB footprint.
 
@@ -63,3 +65,4 @@ Growth after runs is the KV prompt cache, which keeps recent prompts so follow-u
 |---|---|---|---|
 | 2026-10-07 | Baseline (Claude + mock only) | `.venv` 173 MB, `node_modules` 149 MB | `magi-server` ~120 MB; no local models |
 | 2026-10-07 | Step 1: one model per agent, MLX profile | `.venv` +310 MB (mlx, mlx-lm, transformers, langchain-openai, json-repair) | 12.0 GB loaded, 13.3 GB warm, ~14.6 GB peak |
+| 2026-10-07 | Windows support: psutil, tasks.py, CI | `.venv` +1 MB (psutil); new README GIF 0.7 MB (replaces 1.0 MB) | No change; the report now also runs on Windows and Linux (RSS there, macOS `footprint` here) |

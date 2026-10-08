@@ -2,9 +2,10 @@
 
     uv run magi-resources            # markdown report to stdout
 
-Memory is measured with macOS ``footprint`` (phys_footprint), which includes
-GPU allocations made by MLX. Plain RSS misses most of them: a 9B 4-bit model
-shows ~3.5 GB RSS but ~5.4 GB footprint.
+Works on macOS, Linux and Windows (via psutil). On macOS memory comes from
+``footprint`` (phys_footprint), which includes GPU allocations made by MLX;
+plain RSS misses most of them: a 9B 4-bit model shows ~3.5 GB RSS but ~5.4 GB
+footprint.
 """
 
 from __future__ import annotations
@@ -14,10 +15,13 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+
+import psutil
 
 from magi.paths import BACKEND_DIR, REPO_ROOT
 
@@ -53,9 +57,7 @@ def hf_model_size(repo_id: str) -> int | None:
 
 
 def total_ram() -> int:
-    if hasattr(os, "sysconf") and "SC_PHYS_PAGES" in os.sysconf_names:
-        return os.sysconf("SC_PAGE_SIZE") * os.sysconf("SC_PHYS_PAGES")
-    return 0
+    return int(psutil.virtual_memory().total)
 
 
 def gpu_working_set_limit() -> int | None:
@@ -72,8 +74,13 @@ _FOOTPRINT = re.compile(r"phys_footprint:\s+([\d.]+)\s+([KMG])B")
 
 
 def process_memory(pid: int) -> int | None:
-    """Physical footprint of a process in bytes (macOS), falling back to RSS."""
-    if shutil.which("footprint"):
+    """Memory of a process in bytes.
+
+    On macOS this is the physical footprint from ``footprint``, which includes
+    MLX's GPU allocations. Elsewhere it is the resident set (working set on
+    Windows) from psutil.
+    """
+    if sys.platform == "darwin" and shutil.which("footprint"):
         out = subprocess.run(
             ["footprint", str(pid)], capture_output=True, text=True, check=False
         ).stdout
@@ -81,17 +88,28 @@ def process_memory(pid: int) -> int | None:
         if match:
             scale = {"K": 1024, "M": MB, "G": GB}[match.group(2)]
             return int(float(match.group(1)) * scale)
-    out = subprocess.run(
-        ["ps", "-o", "rss=", "-p", str(pid)], capture_output=True, text=True, check=False
-    ).stdout.strip()
-    return int(out) * 1024 if out.isdigit() else None
+    try:
+        return int(psutil.Process(pid).memory_info().rss)
+    except (psutil.NoSuchProcess, psutil.AccessDenied):
+        return None
 
 
 def pid_on_port(port: int) -> int | None:
-    out = subprocess.run(
-        ["lsof", "-ti", f"tcp:{port}", "-sTCP:LISTEN"], capture_output=True, text=True, check=False
-    ).stdout.split()
-    return int(out[0]) if out else None
+    """PID listening on a local TCP port, or None."""
+    try:
+        for conn in psutil.net_connections(kind="tcp"):
+            if conn.status == psutil.CONN_LISTEN and conn.laddr and conn.laddr.port == port:
+                return conn.pid
+        return None
+    except psutil.AccessDenied:
+        # macOS only lets root list every socket; lsof works without it.
+        out = subprocess.run(
+            ["lsof", "-ti", f"tcp:{port}", "-sTCP:LISTEN"],
+            capture_output=True,
+            text=True,
+            check=False,
+        ).stdout.split()
+        return int(out[0]) if out else None
 
 
 @dataclass(frozen=True)
@@ -102,31 +120,32 @@ class ProcessInfo:
 
 
 # Launchers whose command line mentions the real process but isn't it.
-_WRAPPERS = {"uv", "sh", "bash", "zsh", "make"}
+_WRAPPERS = {"uv", "sh", "bash", "zsh", "make", "cmd", "powershell", "pwsh"}
 _PATTERNS = {
     "mlx_lm.server": re.compile(r"mlx_lm[. ]server.*--model\s+(\S+)"),
     "magi-server": re.compile(r"magi-server|magi\.server"),
-    "vite": re.compile(r"node .*vite"),
+    "vite": re.compile(r"node.*vite"),
 }
 
 
 def magi_processes() -> list[ProcessInfo]:
     """Running MAGI-related processes: model servers, the API, the dev server."""
-    out = subprocess.run(
-        ["ps", "-axo", "pid=,command="], capture_output=True, text=True, check=False
-    ).stdout
     found: list[ProcessInfo] = []
-    for line in out.splitlines():
-        pid_text, _, command = line.strip().partition(" ")
-        # Skip this report and the `uv run` wrappers around the real processes.
-        program = Path(command.split(" ", 1)[0]).name
-        if not pid_text.isdigit() or "magi-resources" in command or program in _WRAPPERS:
+    for proc in psutil.process_iter(["pid", "name", "cmdline"]):
+        try:
+            args = proc.info["cmdline"] or []
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            continue
+        command = " ".join(args)
+        program = Path(args[0]).stem.lower() if args else ""
+        # Skip this report and the shells / `uv run` wrappers around the real processes.
+        if not command or "magi-resources" in command or program in _WRAPPERS:
             continue
         for kind, pattern in _PATTERNS.items():
             match = pattern.search(command)
             if match:
                 label = f"{kind} {match.group(1)}" if match.groups() else kind
-                found.append(ProcessInfo(int(pid_text), label, process_memory(int(pid_text))))
+                found.append(ProcessInfo(proc.pid, label, process_memory(proc.pid)))
                 break
     return found
 

@@ -55,7 +55,7 @@ class TraceWriter:
     def __call__(self, event: EventBase) -> None:
         if self._file is None:
             self.path.parent.mkdir(parents=True, exist_ok=True)
-            self._file = self.path.open("a", encoding="utf-8")
+            self._file = self.path.open("a", encoding="utf-8", newline="\n")
         self._file.write(dump_event(event) + "\n")
         self._file.flush()
 

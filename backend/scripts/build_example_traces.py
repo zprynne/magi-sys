@@ -551,7 +551,9 @@ def main() -> None:
     for example in (DRONES, TRIAGE):
         events = TraceBuilder(example, agents).build()
         path = DEFAULT_TRACES_DIR / f"{example.trace_id}.jsonl"
-        path.write_text("".join(dump_event(e) + "\n" for e in events), encoding="utf-8")
+        path.write_text(
+            "".join(dump_event(e) + "\n" for e in events), encoding="utf-8", newline="\n"
+        )
         verdict = next(e for e in events if isinstance(e, Verdict))
         assert verdict.outcome in (Outcome.APPROVED, Outcome.DENIED)
         print(f"wrote {path.name}: {len(events)} events, {verdict.outcome.value}")

@@ -9,7 +9,7 @@ Three AI agents with different priorities debate a proposition, vote, and reach 
 Inspired by the MAGI supercomputer from *Neon Genesis Evangelion*, where three computers modelled on one person's three sides vote on every decision:
 
 <p align="center">
-  <img src="docs/media/magi-original.gif" alt="The MAGI voting display from Neon Genesis Evangelion" width="420">
+  <img src="docs/media/magi-original.gif" alt="The MAGI voting display from Neon Genesis Evangelion" width="400">
   <br>
   <sub>The original MAGI display. <i>Neon Genesis Evangelion</i> (1995) © khara / Project Eva. Shown for reference; not part of this project's licence.</sub>
 </p>
@@ -18,7 +18,7 @@ The console's own visuals are original.
 
 ## Demo
 
-<!-- GIF placeholder: record a mock-mode run (make mock + make frontend), then
+<!-- GIF placeholder: record a mock-mode run (uv run tasks.py dev --mock), then
      save it as docs/magi-demo.gif and uncomment the line below. -->
 <!-- ![A MAGI deliberation: agents debate, conduits light up, votes are revealed](docs/magi-demo.gif) -->
 
@@ -26,10 +26,10 @@ The console's own visuals are original.
 
 ## Quick start
 
-Requirements: [uv](https://docs.astral.sh/uv/) (installs Python 3.12 for you) and Node 22 or newer.
+Requirements: [uv](https://docs.astral.sh/uv/) (it installs Python 3.12 for you) and [Node.js](https://nodejs.org/) 22 or newer. Every command below works the same on macOS, Linux and Windows (PowerShell or cmd).
 
 ```bash
-make install
+uv run tasks.py install
 ```
 
 ### Mock mode (no API key, no cost)
@@ -37,23 +37,25 @@ make install
 Replays the two bundled deliberations in `traces/` with their original timing.
 
 ```bash
-make mock       # terminal 1: API on http://127.0.0.1:8000
-make frontend   # terminal 2: open http://localhost:5173
+uv run tasks.py dev --mock
 ```
 
-### Live mode
+This starts the API and the frontend together; open the `[web] Local:` URL it prints (usually http://localhost:5173). Ctrl-C stops both.
+
+### Live mode (Claude)
 
 ```bash
-cp .env.example .env    # then set ANTHROPIC_API_KEY
-make backend            # terminal 1
-make frontend           # terminal 2
+cp .env.example .env          # then set ANTHROPIC_API_KEY  (Windows: copy .env.example .env)
+uv run tasks.py dev
 ```
 
 A live run makes 13 model calls with the default two debate rounds: 3 openings, 3 per round, 3 votes and a synthesis. With Claude Opus 5.5 at medium effort this takes about one to two minutes.
 
-### Local models (Apple Silicon, no API key)
+### Local models (no API key)
 
-Each agent can run on its own local model. The bundled profile, [`models/mlx.yaml`](models/mlx.yaml), seats three model families served by [mlx-lm](https://github.com/ml-explore/mlx-lm):
+Each agent can run on its own local model. Two profiles are bundled:
+
+**Apple Silicon, with [mlx-lm](https://github.com/ml-explore/mlx-lm)** ([`models/mlx.yaml`](models/mlx.yaml), tested end to end):
 
 | Agent | Model | Memory |
 |---|---|---|
@@ -62,22 +64,39 @@ Each agent can run on its own local model. The bundled profile, [`models/mlx.yam
 | CASPAR-3 | `mlx-community/Llama-3.2-3B-Instruct-4bit` | ~1.9 GB |
 
 ```bash
-make mlx        # terminal 1: one mlx_lm.server per model (checks they're downloaded and fit)
-make local      # terminal 2: API using models/mlx.yaml
-make frontend   # terminal 3
+uv run tasks.py dev --models models/mlx.yaml --start-mlx
 ```
 
-`uv run --extra mlx magi-mlx --check` prints the plan and a memory estimate without starting anything. On a 24 GB Mac the council uses about 12-15 GB and a two-round deliberation takes just under two minutes. See [docs/resource-usage.md](docs/resource-usage.md) for measurements and ways to use less memory.
+`--start-mlx` also starts one `mlx_lm.server` per model, after checking the models are downloaded and estimating whether they fit. On a 24 GB Mac the council uses about 12-15 GB and a two-round deliberation takes just under two minutes. See [docs/resource-usage.md](docs/resource-usage.md) for measurements and ways to use less memory.
 
-Any OpenAI-compatible server works the same way (LM Studio, Ollama, vLLM, llama.cpp): set `provider: openai` and its `base_url` in a profile. Profiles can also mix local agents with Claude.
-
-### Single process
+**Windows, Linux or Mac, with [Ollama](https://ollama.com)** ([`models/ollama.yaml`](models/ollama.yaml), not yet tested end to end):
 
 ```bash
-make serve      # builds frontend/dist and serves it from the API at http://127.0.0.1:8000
+ollama pull qwen3:8b
+ollama pull llama3.1:8b
+ollama pull gemma3:4b
+uv run tasks.py dev --models models/ollama.yaml
 ```
 
-Port 8000 taken? Run the API with `uv run magi-server --port 8765`, and start Vite with `MAGI_BACKEND_URL=http://127.0.0.1:8765 npm run dev`.
+All three need roughly 14 GB of GPU or system memory together; with less, Ollama swaps models in and out (slow but working), or point every agent at one model. LM Studio, vLLM and llama.cpp work the same way: set `provider: openai` and the server's `base_url` in a profile. Profiles can also mix local agents with Claude.
+
+### Other ways to run
+
+```bash
+uv run tasks.py dev --mock --port 8765   # API on another port (the frontend proxies to it)
+uv run tasks.py serve                    # build the frontend and serve everything from the API on :8000
+uv run tasks.py --help                   # every command
+```
+
+On macOS and Linux, `make` targets wrap the same commands (`make dev-mock`, `make dev-mlx`, `make check`, with `PORT=8765` to change the port).
+
+### Running on Windows
+
+- Use `uv run tasks.py …`; the Makefile is only a shortcut for macOS and Linux.
+- For local models use Ollama or LM Studio (`models/ollama.yaml`). MLX is Apple-only, so `--start-mlx` and `magi-mlx` say so and exit.
+- Set environment variables in PowerShell with `$env:MAGI_MOCK = "1"`, or put them in `.env`.
+- The repository pins LF line endings (`.gitattributes`), so the generated schema and types stay identical on every OS.
+- CI runs the full check on Windows, macOS and Linux for every push.
 
 ## Display styles
 
@@ -165,7 +184,7 @@ flowchart LR
     B -- "npm run gen:types" --> C["frontend/src/types/events.generated.ts"]
 ```
 
-`make check` fails if either generated file is stale.
+`uv run tasks.py check` (and CI) fails if either generated file is stale.
 
 ## Event schema
 
@@ -254,13 +273,13 @@ Small local models produce malformed JSON more often (a missing closing brace, u
 ## Development
 
 ```bash
-make test        # pytest (backend, 121 tests) + vitest (frontend reducer)
-make lint        # ruff + eslint (typescript-eslint strict, react-hooks)
-make typecheck   # mypy --strict (src, tests, scripts) + tsc
-make check       # all of the above + schema/type drift checks
-make types       # regenerate JSON Schema and TS types after editing events.py
-make traces      # rebuild traces/example-*.jsonl from backend/scripts/build_example_traces.py
-make resources   # disk and memory report (see docs/resource-usage.md)
+uv run tasks.py test        # pytest (backend, 125 tests) + vitest (frontend reducer)
+uv run tasks.py lint        # ruff + eslint (typescript-eslint strict, react-hooks)
+uv run tasks.py typecheck   # mypy --strict (src, tests, scripts, tasks.py) + tsc
+uv run tasks.py check       # all of the above + schema/type drift checks (what CI runs)
+uv run tasks.py types       # regenerate JSON Schema and TS types after editing events.py
+uv run tasks.py traces      # rebuild traces/example-*.jsonl
+uv run tasks.py resources   # disk and memory report (see docs/resource-usage.md)
 ```
 
 The backend tests drive the real LangGraph graph with a scripted LangChain chat model (`tests/fakes.py`) that answers by speaker and phase. They cover parallel fan-out, reply resolution, revisions, early consensus, zero-round runs, both vote rules, repair retries, refusals, synthesis fallback, citation validation, mock replay timing, SSE resume, trace persistence and path-traversal safety.
@@ -292,7 +311,8 @@ frontend/src/
   components/replay/       timeline scrubber
   pages/                   Console, Replays, Replay player
   types/events.generated.ts
-models/     model profiles (mlx.yaml)
+models/     model profiles (mlx.yaml, ollama.yaml)
+tasks.py    cross-platform task runner (uv run tasks.py --help)
 docs/       resource-usage.md
 personas/   schema/   traces/
 ```
@@ -315,7 +335,7 @@ personas/   schema/   traces/
 - There is no authentication or rate limiting, so treat the server as a local tool.
 - Mock mode picks the recorded deliberation closest to your question. It does not answer new questions.
 
-**Next steps:** tracing with Langfuse, an evaluation harness (debate vs single model vs self-consistency), streaming argument tokens, picking the profile per run in the UI, CI and Playwright tests, and the demo GIF.
+**Next steps:** run the Ollama profile end to end, tracing with Langfuse, an evaluation harness (debate vs single model vs self-consistency), streaming argument tokens, picking the profile per run in the UI, CI and Playwright tests, and the demo GIF.
 
 ## License
 

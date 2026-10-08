@@ -1,0 +1,9 @@
+# Keep LF everywhere (including Windows checkouts) so generated files, the
+# schema/type drift checks and formatters agree across operating systems.
+* text=auto eol=lf
+
+*.gif binary
+*.jpg binary
+*.png binary
+*.woff binary
+*.woff2 binary

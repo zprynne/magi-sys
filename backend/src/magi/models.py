@@ -109,7 +109,7 @@ def load_profile(path: Path) -> ModelProfile:
     if not path.is_file():
         raise ProfileError(f"model profile not found: {path}")
     try:
-        return ModelProfile.model_validate(yaml.safe_load(path.read_text()) or {})
+        return ModelProfile.model_validate(yaml.safe_load(path.read_text(encoding="utf-8")) or {})
     except ValidationError as exc:
         raise ProfileError(f"invalid model profile {path}: {exc}") from exc
 
