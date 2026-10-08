@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { NavLink } from 'react-router-dom'
 import { useServerConfig } from '../lib/config'
+import { useTheme, type Theme } from '../lib/theme'
 
 function Mark() {
   return (
@@ -37,6 +38,33 @@ function ModeBadge() {
   )
 }
 
+function ThemeToggle() {
+  const { theme, setTheme } = useTheme()
+  const options: { value: Theme; label: string }[] = [
+    { value: 'console', label: 'Console' },
+    { value: 'classic', label: 'Classic' },
+  ]
+  return (
+    <div className="flex border border-line" role="group" aria-label="Display style">
+      {options.map((option) => (
+        <button
+          key={option.value}
+          type="button"
+          aria-pressed={theme === option.value}
+          onClick={() => {
+            setTheme(option.value)
+          }}
+          className={`px-2 py-1 font-mono text-[11px] ${
+            theme === option.value ? 'bg-signal text-void' : 'text-dim hover:text-ink'
+          }`}
+        >
+          {option.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 const navClass = ({ isActive }: { isActive: boolean }) =>
   `px-3 py-1.5 font-mono text-[12px] transition-colors ${
     isActive ? 'text-signal' : 'text-dim hover:text-ink'
@@ -59,6 +87,7 @@ export function Shell({ children }: { children: ReactNode }) {
             Replays
           </NavLink>
         </nav>
+        <ThemeToggle />
         <div className="hidden border-l border-line pl-4 md:block">
           <ModeBadge />
         </div>

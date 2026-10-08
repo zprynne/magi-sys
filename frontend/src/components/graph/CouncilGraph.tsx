@@ -3,6 +3,7 @@ import {
   BackgroundVariant,
   ReactFlow,
   ReactFlowProvider,
+  useNodesInitialized,
   useReactFlow,
   useStore,
   type EdgeTypes,
@@ -14,9 +15,59 @@ import type { DeliberationView } from '../../state/deliberation'
 import { AGENT_NODE_HEIGHT, AGENT_NODE_WIDTH, AgentNode, type AgentFlowNode } from './AgentNode'
 import { ConduitEdge, type ConduitFlowEdge } from './ConduitEdge'
 import { CORE_NODE_SIZE, CoreNode, type CoreFlowNode } from './CoreNode'
+import { ClassicAgentNode, type ClassicAgentFlowNode } from './classic/ClassicAgentNode'
+import { ClassicHubNode, type ClassicHubFlowNode } from './classic/ClassicHubNode'
+import { ClassicReadout } from './classic/ClassicReadout'
+import { HUB, SLABS, slotFor } from './classic/geometry'
+import { SpokeEdge, type SpokeFlowEdge } from './classic/SpokeEdge'
+import { useTheme } from '../../lib/theme'
 
-const nodeTypes: NodeTypes = { agent: AgentNode, core: CoreNode }
-const edgeTypes: EdgeTypes = { conduit: ConduitEdge }
+const nodeTypes: NodeTypes = {
+  agent: AgentNode,
+  core: CoreNode,
+  classicAgent: ClassicAgentNode,
+  classicHub: ClassicHubNode,
+}
+const edgeTypes: EdgeTypes = { conduit: ConduitEdge, spoke: SpokeEdge }
+
+type CouncilNode = AgentFlowNode | CoreFlowNode | ClassicAgentFlowNode | ClassicHubFlowNode
+type CouncilEdge = ConduitFlowEdge | SpokeFlowEdge
+
+const FIXED = { draggable: false, selectable: false, focusable: false } as const
+
+/** The classic display: slabs around the MAGI hub, joined by spokes. */
+function classicGraph(view: DeliberationView): { nodes: CouncilNode[]; edges: CouncilEdge[] } {
+  const sealed = view.verdict === null
+  const nodes: CouncilNode[] = [
+    { id: 'hub', type: 'classicHub', position: { x: HUB.x, y: HUB.y }, data: {}, ...FIXED },
+  ]
+  const edges: CouncilEdge[] = []
+  view.agents.forEach((info, index) => {
+    const agent = view.byAgent[info.id]
+    if (!agent) return
+    const slot = slotFor(index)
+    const shape = SLABS[slot]
+    nodes.push({
+      id: info.id,
+      type: 'classicAgent',
+      position: { x: shape.x, y: shape.y },
+      data: { agent, sealed, slot },
+      ...FIXED,
+    })
+    edges.push({
+      id: `hub--${info.id}`,
+      source: 'hub',
+      target: info.id,
+      type: 'spoke',
+      ...FIXED,
+      data: {
+        agentId: info.id,
+        replies: view.replies.filter((r) => r.from === info.id || r.to === info.id),
+      },
+    })
+  })
+  return { nodes, edges }
+}
 
 const RADIUS = 318
 const FIT_PADDING = 0.05
@@ -27,22 +78,27 @@ function agentCenter(index: number, count: number): { x: number; y: number } {
   return { x: Math.cos(angle) * RADIUS, y: Math.sin(angle) * RADIUS * 0.92 }
 }
 
-function FitOnResize({ nodeCount }: { nodeCount: number }) {
+function FitOnResize({ nodeCount, layoutKey }: { nodeCount: number; layoutKey: string }) {
   const { fitView } = useReactFlow()
   const width = useStore((s) => s.width)
   const height = useStore((s) => s.height)
+  // Wait until React Flow has measured the current nodes, or a theme switch
+  // would fit the old layout's bounds.
+  const measured = useNodesInitialized()
   useEffect(() => {
-    if (width > 0 && height > 0 && nodeCount > 0) {
+    if (measured && width > 0 && height > 0 && nodeCount > 0) {
       void fitView({ padding: FIT_PADDING, duration: 0 })
     }
-  }, [fitView, width, height, nodeCount])
+  }, [fitView, measured, width, height, nodeCount, layoutKey])
   return null
 }
 
 export function CouncilGraph({ view }: { view: DeliberationView }) {
   const { agents } = view
+  const { theme } = useTheme()
+  const classic = theme === 'classic' && agents.length === 3
 
-  const nodes = useMemo<(AgentFlowNode | CoreFlowNode)[]>(() => {
+  const consoleNodes = useMemo<(AgentFlowNode | CoreFlowNode)[]>(() => {
     const sealed = view.verdict === null
     const agentNodes: AgentFlowNode[] = agents.flatMap((info, index) => {
       const agent = view.byAgent[info.id]
@@ -78,7 +134,7 @@ export function CouncilGraph({ view }: { view: DeliberationView }) {
     return [...agentNodes, core]
   }, [agents, view.byAgent, view.phase, view.round, view.config, view.votes, view.verdict, view.fatal])
 
-  const edges = useMemo<ConduitFlowEdge[]>(() => {
+  const consoleEdges = useMemo<ConduitFlowEdge[]>(() => {
     const colors = Object.fromEntries(agents.map((a) => [a.id, a.color]))
     const result: ConduitFlowEdge[] = []
     agents.forEach((a, i) => {
@@ -102,6 +158,13 @@ export function CouncilGraph({ view }: { view: DeliberationView }) {
     return result
   }, [agents, view.replies])
 
+  const classicLayout = useMemo(
+    () => (classic ? classicGraph(view) : null),
+    [classic, view],
+  )
+  const nodes: CouncilNode[] = classicLayout?.nodes ?? consoleNodes
+  const edges: CouncilEdge[] = classicLayout?.edges ?? consoleEdges
+
   return (
     <ReactFlowProvider>
       <ReactFlow
@@ -112,7 +175,7 @@ export function CouncilGraph({ view }: { view: DeliberationView }) {
         fitView
         fitViewOptions={{ padding: FIT_PADDING }}
         minZoom={0.3}
-        maxZoom={1.15}
+        maxZoom={classic ? 2 : 1.15}
         nodesDraggable={false}
         nodesConnectable={false}
         elementsSelectable={false}
@@ -123,8 +186,12 @@ export function CouncilGraph({ view }: { view: DeliberationView }) {
         preventScrolling={false}
         aria-label="Council graph"
       >
-        <Background variant={BackgroundVariant.Dots} gap={22} size={1} color="var(--color-line)" />
-        <FitOnResize nodeCount={nodes.length} />
+        {classic ? (
+          <ClassicReadout view={view} />
+        ) : (
+          <Background variant={BackgroundVariant.Dots} gap={22} size={1} color="var(--color-line)" />
+        )}
+        <FitOnResize nodeCount={nodes.length} layoutKey={classic ? 'classic' : 'console'} />
       </ReactFlow>
     </ReactFlowProvider>
   )

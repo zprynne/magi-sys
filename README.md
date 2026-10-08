@@ -79,6 +79,19 @@ make serve      # builds frontend/dist and serves it from the API at http://127.
 
 Port 8000 taken? Run the API with `uv run magi-server --port 8765`, and start Vite with `MAGI_BACKEND_URL=http://127.0.0.1:8765 npm run dev`.
 
+## Display styles
+
+The header switches between two looks (remembered per browser):
+
+- **Console:** MAGI's own command-centre design, with chamfered agent panels around a hex core and colour-coded conduits.
+- **Classic:** after the display in the show. Flat slabs interlock around an orange MAGI hub, pulse while their agent thinks, and turn green (承認, approve) or red (否定, deny) when the votes are revealed. 提訴 (petition) and 決議 (resolution) readouts track the run.
+
+<p align="center">
+  <img src="docs/media/classic-theme.jpg" alt="Classic display after a verdict: BALTHASAR-2 red with 否定 DENY, CASPAR-3 and MELCHIOR-1 green with 承認 APPROVE" width="760">
+</p>
+
+Classic is drawn for a three-member council; other council sizes use the Console layout.
+
 ## How a deliberation works
 
 1. **Opening.** Every agent states an initial position independently and in parallel.

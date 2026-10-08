@@ -4,11 +4,17 @@
 @import '@fontsource/chakra-petch/400.css';
 @import '@fontsource/chakra-petch/500.css';
 @import '@fontsource/chakra-petch/600.css';
+@import '@fontsource/barlow-condensed/600.css';
+@import '@fontsource/barlow-condensed/700.css';
 @import 'tailwindcss';
 
 @theme {
   --font-mono: 'Martian Mono', ui-monospace, 'SFMono-Regular', monospace;
   --font-sans: 'Chakra Petch', ui-sans-serif, system-ui, sans-serif;
+  /* Classic theme */
+  --font-slab: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+  --font-hub: Georgia, 'Times New Roman', serif;
+  --font-kanji: 'Hiragino Mincho ProN', 'Yu Mincho', 'Noto Serif JP', serif;
 
   /* Console surfaces */
   --color-void: #050a09;
@@ -32,6 +38,7 @@
   --animate-blink: blink 1.1s steps(2, start) infinite;
   --animate-transmit: transmit 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) both;
   --animate-stamp: stamp 520ms cubic-bezier(0.2, 0.9, 0.25, 1.15) both;
+  --animate-classic-think: classic-think 1.2s ease-in-out infinite;
 
   @keyframes scan {
     0% { transform: translateX(-100%); }
@@ -39,6 +46,10 @@
   }
   @keyframes blink {
     to { visibility: hidden; }
+  }
+  @keyframes classic-think {
+    0%, 100% { fill: var(--classic-idle); }
+    50% { fill: var(--classic-think); }
   }
   @keyframes stamp {
     from { transform: scale(1.6); opacity: 0; letter-spacing: 0.4em; }
@@ -48,6 +59,28 @@
     from { clip-path: inset(0 100% 0 0); opacity: 0.4; }
     to { clip-path: inset(0 0 0 0); opacity: 1; }
   }
+}
+
+/* Classic theme: orange-on-black readouts and flat colour slabs, after the
+   MAGI display in the show. Everything below re-tints the shared tokens. */
+:root {
+  --classic-idle: #7eb0ee;
+  --classic-think: #b9d8ff;
+  --classic-speaking: #a5ccfa;
+  --classic-sealed: #5683c0;
+  --classic-approve: #3ccf72;
+  --classic-deny: #e5372f;
+  --classic-abstain: #e8a92c;
+}
+:root[data-theme='classic'] {
+  --color-void: #000000;
+  --color-panel: #070403;
+  --color-raised: #140a04;
+  --color-line: #4a2608;
+  --color-line-bright: #8a4512;
+  --color-ink: #f6e3cf;
+  --color-dim: #d08a52;
+  --color-faint: #82552f;
 }
 
 @layer base {

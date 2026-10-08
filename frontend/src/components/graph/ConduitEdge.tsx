@@ -12,8 +12,17 @@ export type ConduitFlowEdge = Edge<ConduitData, 'conduit'>
 
 const PULSE_MS = 1500
 
-/** A dot that travels the conduit once, from the speaker to the agent answered. */
-function Pulse({ d, reverse, color }: { d: string; reverse: boolean; color: string }) {
+interface PulseProps {
+  d: string
+  reverse: boolean
+  color: string
+  durationMs?: number
+  delayMs?: number
+  radius?: number
+}
+
+/** A dot that travels a path once (the speaker's reply reaching its target). */
+export function Pulse({ d, reverse, color, durationMs = PULSE_MS, delayMs = 0, radius = 5 }: PulseProps) {
   const pathRef = useRef<SVGPathElement>(null)
   const dotRef = useRef<SVGCircleElement>(null)
   const reducedMotion = usePrefersReducedMotion()
@@ -23,10 +32,14 @@ function Pulse({ d, reverse, color }: { d: string; reverse: boolean; color: stri
     const dot = dotRef.current
     if (!path || !dot || reducedMotion) return
     const length = path.getTotalLength()
-    const start = performance.now()
+    const start = performance.now() + delayMs
     let frame = 0
     const tick = (now: number) => {
-      const t = Math.min((now - start) / PULSE_MS, 1)
+      if (now < start) {
+        frame = requestAnimationFrame(tick)
+        return
+      }
+      const t = Math.min((now - start) / durationMs, 1)
       const eased = t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2
       const point = path.getPointAtLength((reverse ? 1 - eased : eased) * length)
       dot.setAttribute('cx', String(point.x))
@@ -38,12 +51,12 @@ function Pulse({ d, reverse, color }: { d: string; reverse: boolean; color: stri
     return () => {
       cancelAnimationFrame(frame)
     }
-  }, [d, reverse, reducedMotion])
+  }, [d, reverse, reducedMotion, durationMs, delayMs])
 
   return (
     <g>
       <path ref={pathRef} d={d} fill="none" stroke="none" />
-      <circle ref={dotRef} r={5} fill={color} style={{ opacity: 0, filter: `drop-shadow(0 0 6px ${color})` }} />
+      <circle ref={dotRef} r={radius} fill={color} style={{ opacity: 0, filter: `drop-shadow(0 0 6px ${color})` }} />
     </g>
   )
 }

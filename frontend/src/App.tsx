@@ -1,12 +1,14 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { Shell } from './components/Shell'
 import { ConfigProvider } from './lib/config'
+import { ThemeProvider } from './lib/theme'
 import { ConsolePage } from './pages/ConsolePage'
 import { ReplayIndexPage } from './pages/ReplayIndexPage'
 import { ReplayPage } from './pages/ReplayPage'
 
 export default function App() {
   return (
+    <ThemeProvider>
     <ConfigProvider>
       <BrowserRouter>
         <Shell>
@@ -20,5 +22,6 @@ export default function App() {
         </Shell>
       </BrowserRouter>
     </ConfigProvider>
+    </ThemeProvider>
   )
 }

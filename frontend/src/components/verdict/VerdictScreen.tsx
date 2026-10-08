@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { percent, signalColor, signalText } from '../../lib/format'
+import { kanjiFor, useTheme } from '../../lib/theme'
 import { usePrefersReducedMotion } from '../../lib/usePrefersReducedMotion'
 import type { AgentInfo, Verdict, VoteCast } from '../../types/events'
 
@@ -21,6 +22,7 @@ interface Props {
  */
 export function VerdictScreen({ question, verdict, votes, agents, onClose }: Props) {
   const reducedMotion = usePrefersReducedMotion()
+  const classic = useTheme().theme === 'classic'
   const titleId = useId()
   const dialog = useRef<HTMLDivElement>(null)
   const ordered = agents.map((agent) => ({ agent, vote: votes.find((v) => v.agent_id === agent.id) ?? null }))
@@ -78,7 +80,7 @@ export function VerdictScreen({ question, verdict, votes, agents, onClose }: Pro
         <ol className="grid grid-cols-1 gap-3 sm:grid-cols-3" aria-label="Votes">
           {ordered.map(({ agent, vote }, index) => (
             <li key={agent.id}>
-              <VoteCard agent={agent} vote={vote} revealed={shown > index} />
+              <VoteCard agent={agent} vote={vote} revealed={shown > index} classic={classic} />
             </li>
           ))}
         </ol>
@@ -86,6 +88,11 @@ export function VerdictScreen({ question, verdict, votes, agents, onClose }: Pro
         <div className="flex min-h-[150px] flex-col items-center justify-center gap-3 text-center" aria-live="polite">
           {stamped ? (
             <>
+              {classic && (
+                <p className="animate-stamp font-kanji text-[56px] leading-none font-[700] sm:text-[84px]" style={{ color }} lang="ja">
+                  {kanjiFor(verdict.outcome)}
+                </p>
+              )}
               <p
                 className={`animate-stamp border-[3px] px-6 py-2 font-mono text-[40px] font-[800] tracking-[0.12em] sm:text-[64px] md:text-[76px] ${signalText(verdict.outcome)}`}
                 style={{ borderColor: color, boxShadow: `0 0 40px color-mix(in oklab, ${color} 30%, transparent)` }}
@@ -133,12 +140,22 @@ export function VerdictScreen({ question, verdict, votes, agents, onClose }: Pro
   )
 }
 
-function VoteCard({ agent, vote, revealed }: { agent: AgentInfo; vote: VoteCast | null; revealed: boolean }) {
+function VoteCard({
+  agent,
+  vote,
+  revealed,
+  classic,
+}: {
+  agent: AgentInfo
+  vote: VoteCast | null
+  revealed: boolean
+  classic: boolean
+}) {
   const open = revealed && vote !== null
   const color = open ? signalColor(vote.vote) : 'var(--color-line)'
   return (
     <article
-      className="chamfer relative h-[188px] transition-[background] duration-500"
+      className={`chamfer relative transition-[background] duration-500 ${classic ? 'h-[214px]' : 'h-[188px]'}`}
       style={{ background: open ? color : `color-mix(in oklab, ${agent.color} 40%, var(--color-void))` }}
       aria-label={`${agent.name}: ${open ? vote.vote : 'sealed'}`}
     >
@@ -151,6 +168,11 @@ function VoteCard({ agent, vote, revealed }: { agent: AgentInfo; vote: VoteCast 
         </header>
         {open ? (
           <div key="open" className="mt-3 flex flex-1 animate-transmit flex-col">
+            {classic && (
+              <p className={`mb-1 font-kanji text-[22px] leading-none font-[700] ${signalText(vote.vote)}`} lang="ja">
+                {kanjiFor(vote.vote)}
+              </p>
+            )}
             <p className={`font-mono text-[30px] font-[800] leading-none tracking-[0.06em] ${signalText(vote.vote)}`}>
               {vote.vote}
             </p>
